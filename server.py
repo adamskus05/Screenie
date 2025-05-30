@@ -117,33 +117,34 @@ def is_safe_filename(filename):
 
 def init_db():
     """Initialize the database with schema."""
-    # Skip if database already exists
-    if os.path.exists(DB_FILE):
-        app.logger.info("Database already exists, skipping initialization")
-        return
-
     try:
         # Ensure the database directory exists
         os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
         
+        # If database exists and has data, skip initialization
+        if os.path.exists(DB_FILE) and os.path.getsize(DB_FILE) > 0:
+            app.logger.info("Database exists and has data, skipping initialization")
+            return
+
+        app.logger.info("Initializing empty database...")
         with sqlite3.connect(DB_FILE) as conn:
             # Read schema from the file
             if os.path.exists(SCHEMA_FILE):
                 with open(SCHEMA_FILE, 'r') as f:
                     conn.executescript(f.read())
-                    app.logger.info("Database initialized successfully")
+                    app.logger.info("Database schema initialized successfully")
             else:
                 app.logger.error("Schema file not found")
                 raise FileNotFoundError("Schema file not found")
             
             cursor = conn.cursor()
             
-            # Check if any admin user exists
-            cursor.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1')
-            admin_exists = cursor.fetchone()[0] > 0
+            # Check if any users exist at all
+            cursor.execute('SELECT COUNT(*) FROM users')
+            user_count = cursor.fetchone()[0]
             
-            if not admin_exists:
-                app.logger.warning("No admin account detected, creating default admin...")
+            if user_count == 0:
+                app.logger.warning("No users found, creating default admin...")
                 # Create default admin user
                 cursor.execute('''
                     INSERT INTO users (username, password_hash, is_admin, is_approved, status)
@@ -151,8 +152,10 @@ def init_db():
                 ''', ('OPERATOR_1337', generate_password_hash('ITgwXqkIl2co6RsgAvBhvQ')))
                 conn.commit()
                 app.logger.info("Default admin user created with username: OPERATOR_1337")
+            else:
+                app.logger.info(f"Database already has {user_count} users, skipping admin creation")
             
-            app.logger.info("Schema update completed successfully")
+            app.logger.info("Database initialization completed successfully")
             
     except Exception as e:
         app.logger.error(f"Error initializing database: {e}")
