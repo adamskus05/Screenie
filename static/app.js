@@ -1963,3 +1963,52 @@ function closeModal() {
 
 // Mobile navigation functions
 // ... rest of the code ...
+
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('loginForm');
+    const errorDiv = document.getElementById('error');
+    
+    if (!loginForm || !errorDiv) {
+        console.error('Required login form elements not found');
+        return;
+    }
+
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        
+        if (!usernameInput || !passwordInput || 
+            !(usernameInput instanceof HTMLInputElement) || 
+            !(passwordInput instanceof HTMLInputElement)) {
+            errorDiv.textContent = 'Login form elements not found';
+            return;
+        }
+        
+        try {
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    username: usernameInput.value, 
+                    password: passwordInput.value 
+                }),
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                window.location.href = '/app';
+            } else {
+                errorDiv.textContent = data.error || 'Login failed';
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            errorDiv.textContent = 'An error occurred during login';
+        }
+    });
+});
