@@ -770,36 +770,51 @@ class ScreenshotApp:
             self.session = requests.Session()
             self.session.verify = self.config["server"]["verify_ssl"]
             
-            # Set detailed headers
+            # Set headers to match browser request exactly
             headers = {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.9',
                 'Origin': 'app://screenie',
-                'User-Agent': 'Screenie Desktop Client/1.0',
-                'X-Requested-With': 'XMLHttpRequest'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Referer': 'https://screenie.space/',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Dest': 'empty',
+                'Connection': 'keep-alive'
             }
             self.session.headers.update(headers)
             
             logger.info("Using headers: %s", headers)
             
+            # First make a GET request to get any necessary cookies
+            try:
+                logger.info("Making initial GET request to /")
+                self.session.get(f"{self.config['server']['url']}/")
+            except Exception as e:
+                logger.warning(f"Initial GET request failed: {e}")
+            
             # Attempt login
             url = f"{self.config['server']['url']}/login"
             logger.info("Making login request to: %s", url)
             
-            # Create login data with exact values
+            # Format credentials exactly as the web form
             login_data = {
-                "username": username,  # Don't strip to preserve exact input
-                "password": password   # Don't modify password at all
+                "username": username,
+                "password": password,
+                "_permanent": True
             }
             
             # Log non-sensitive debug info
             logger.debug(f"Request payload size: {len(str(login_data))} bytes")
             logger.info(f"Sending login request for user: {username}")
             
+            # Make the login request with form data
             response = self.session.post(
                 url,
                 json=login_data,
-                timeout=self.config["upload"]["timeout"]
+                timeout=self.config["upload"]["timeout"],
+                allow_redirects=True
             )
             
             logger.info(f"Login response status: {response.status_code}")
