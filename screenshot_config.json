@@ -1,6 +1,6 @@
 {
     "server": {
-        "url": "https://screenie.onrender.com",
+        "url": "https://screenie.space",
         "verify_ssl": true
     },
     "upload": {

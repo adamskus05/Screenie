@@ -59,7 +59,7 @@ app.config['DEBUG'] = False  # Disable debug mode in production
 
 # Set session configuration
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
+app.config['SESSION_COOKIE_SAMESITE'] = None  # Allow cross-site cookies for the desktop app
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Increased from 24 hours to 7 days
 app.config['SESSION_FILE_DIR'] = os.path.join(DATA_DIR, 'sessions')
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -77,11 +77,12 @@ CORS(app,
      supports_credentials=True,
      resources={
          r"/*": {
-             "origins": ALLOWED_ORIGINS,
+             "origins": ["http://localhost:5000", "https://localhost:5000", "http://127.0.0.1:5000", "https://127.0.0.1:5000", "https://screenie.space", *ALLOWED_ORIGINS],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization"],
              "expose_headers": ["Content-Type"],
-             "supports_credentials": True
+             "supports_credentials": True,
+             "allow_credentials": True
          }
      })
 
