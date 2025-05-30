@@ -4,12 +4,7 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: |
-      python create_admin.py <<EOF
-      $ADMIN_USERNAME
-      $ADMIN_PASSWORD
-      $ADMIN_PASSWORD
-      $ADMIN_EMAIL
-      EOF
+      echo -e "$ADMIN_USERNAME\n$ADMIN_PASSWORD\n$ADMIN_PASSWORD\n$ADMIN_EMAIL" | python create_admin.py
       gunicorn --bind 0.0.0.0:$PORT server:app
     envVars:
       - key: ENVIRONMENT
