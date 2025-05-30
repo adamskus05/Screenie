@@ -9,9 +9,9 @@ export DB_FILE=$DATA_DIR/users.db
 mkdir -p $DATA_DIR
 mkdir -p $UPLOAD_FOLDER
 
-# Set proper permissions
-chmod 755 $DATA_DIR
-chmod 755 $UPLOAD_FOLDER
+# Set proper permissions (more permissive for debugging)
+chmod -R 777 $DATA_DIR
+chmod -R 777 $UPLOAD_FOLDER
 
 # Initialize database only if it doesn't exist AND is empty
 if [ ! -f "$DB_FILE" ] || [ ! -s "$DB_FILE" ]; then
@@ -46,6 +46,9 @@ with sqlite3.connect(DB_FILE) as conn:
     else:
         print(f'Database already has {user_count} users. Skipping admin creation.')
 "
+
+# Ensure database file has proper permissions
+chmod 666 "$DB_FILE"
 fi
 
 # Start the server
