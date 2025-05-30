@@ -2,7 +2,64 @@ services:
   - type: web
     name: screenie
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      python3 -c "
+      import sqlite3
+      import os
+      from werkzeug.security import generate_password_hash
+      from datetime import datetime
+
+      # Set up paths
+      DATA_DIR = '/data'
+      DB_FILE = os.path.join(DATA_DIR, 'users.db')
+      os.makedirs(DATA_DIR, exist_ok=True)
+
+      # Create database and admin user
+      with sqlite3.connect(DB_FILE) as conn:
+          cursor = conn.cursor()
+          
+          # Create users table
+          cursor.execute('''
+              CREATE TABLE IF NOT EXISTS users (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  username TEXT UNIQUE NOT NULL,
+                  password_hash TEXT NOT NULL,
+                  email TEXT,
+                  is_admin BOOLEAN DEFAULT 0,
+                  is_approved BOOLEAN DEFAULT 0,
+                  status TEXT DEFAULT 'active',
+                  last_login TIMESTAMP,
+                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+              )
+          ''')
+          
+          # Create admin user
+          cursor.execute('DELETE FROM users WHERE username = ?', ('OPERATOR_1337',))
+          cursor.execute('''
+              INSERT INTO users (
+                  username, 
+                  password_hash, 
+                  email,
+                  is_admin, 
+                  is_approved, 
+                  status,
+                  created_at,
+                  updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ''', (
+              'OPERATOR_1337',
+              generate_password_hash('ITgwXqkIl2co6RsgAvBhvQ'),
+              'admin@example.com',
+              True,
+              True,
+              'active',
+              datetime.now(),
+              datetime.now()
+          ))
+          conn.commit()
+      "
     startCommand: python server.py
     envVars:
       - key: PYTHON_VERSION

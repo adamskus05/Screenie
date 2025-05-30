@@ -351,7 +351,7 @@ def login():
             if not user:
                 app.logger.warning(f"Login attempt for non-existent user: {username}")
                 record_failed_attempt(client_ip)
-                return jsonify({'error': 'Invalid credentials'}), 401
+        return jsonify({'error': 'Invalid credentials'}), 401
             
             app.logger.debug(f"Found user: {user[4]} (ID: {user[0]})")
             
