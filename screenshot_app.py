@@ -292,34 +292,28 @@ class ScreenshotApp:
             self.select_window = None
             return
             
-        logger.info("Taking screenshot of all monitors")
+        logger.info("Taking screenshot of active monitor")
         try:
-            # Get the virtual screen metrics (entire desktop area)
-            SM_XVIRTUALSCREEN = 76
-            SM_YVIRTUALSCREEN = 77
-            SM_CXVIRTUALSCREEN = 78
-            SM_CYVIRTUALSCREEN = 79
+            # Get the current mouse position
+            mouse_x, mouse_y = pyautogui.position()
             
-            user32 = ctypes.windll.user32
-            virtual_left = user32.GetSystemMetrics(SM_XVIRTUALSCREEN)
-            virtual_top = user32.GetSystemMetrics(SM_YVIRTUALSCREEN)
-            virtual_width = user32.GetSystemMetrics(SM_CXVIRTUALSCREEN)
-            virtual_height = user32.GetSystemMetrics(SM_CYVIRTUALSCREEN)
+            # Get all monitors
+            all_monitors = self.sct.monitors[1:]  # Skip the first monitor which is the "all in one"
             
-            # Get all monitors including the primary one
-            all_monitors = self.sct.monitors
+            # Find the monitor that contains the mouse cursor
+            active_monitor = None
+            for monitor in all_monitors:
+                if (monitor["left"] <= mouse_x < monitor["left"] + monitor["width"] and
+                    monitor["top"] <= mouse_y < monitor["top"] + monitor["height"]):
+                    active_monitor = monitor
+                    break
             
-            # Create a new image to hold all screenshots
-            self.screenshot = Image.new('RGB', (virtual_width, virtual_height))
+            if not active_monitor:
+                active_monitor = all_monitors[0]  # Fallback to first monitor if not found
             
-            # Capture the entire virtual screen
-            for monitor in all_monitors[1:]:  # Skip the first monitor which is the "all in one"
-                screen = self.sct.grab(monitor)
-                img = Image.frombytes('RGB', screen.size, screen.rgb)
-                # Calculate the correct position relative to virtual screen
-                pos_x = monitor["left"] - virtual_left
-                pos_y = monitor["top"] - virtual_top
-                self.screenshot.paste(img, (pos_x, pos_y))
+            # Take screenshot of only the active monitor
+            screen = self.sct.grab(active_monitor)
+            self.screenshot = Image.frombytes('RGB', screen.size, screen.rgb)
             
             # Create selection window
             self.select_window = tk.Toplevel(self.root)
@@ -329,8 +323,8 @@ class ScreenshotApp:
             self.select_window.overrideredirect(True)
             self.select_window.attributes('-alpha', 0.3, '-topmost', True)
             
-            # Position window to cover entire virtual screen
-            geometry = f"{virtual_width}x{virtual_height}+{virtual_left}+{virtual_top}"
+            # Position window to cover only the active monitor
+            geometry = f"{active_monitor['width']}x{active_monitor['height']}+{active_monitor['left']}+{active_monitor['top']}"
             self.select_window.geometry(geometry)
             
             # Hide from taskbar
@@ -353,12 +347,12 @@ class ScreenshotApp:
             self.photo = ImageTk.PhotoImage(self.screenshot)
             self.canvas.create_image(0, 0, image=self.photo, anchor="nw")
             
-            # Store virtual screen info for coordinate translation
+            # Store monitor info for coordinate translation
             self.monitor_info = {
-                'virtual_left': virtual_left,
-                'virtual_top': virtual_top,
-                'virtual_width': virtual_width,
-                'virtual_height': virtual_height
+                'virtual_left': active_monitor['left'],
+                'virtual_top': active_monitor['top'],
+                'virtual_width': active_monitor['width'],
+                'virtual_height': active_monitor['height']
             }
             
             # Bind events
@@ -565,7 +559,7 @@ class ScreenshotApp:
             try:
                 # Optimize image
                 img_byte_arr = BytesIO()
-                self.screenshot.save(img_byte_arr, format='PNG')
+                self.current_screenshot.save(img_byte_arr, format='PNG')
                 img_byte_arr = img_byte_arr.getvalue()
 
                 # Prepare upload
@@ -610,7 +604,14 @@ class ScreenshotApp:
         # Submit upload task
         future = self.upload_executor.submit(upload_task)
         self.upload_futures.append(future)
-        self.show_progress("Uploading screenshot...")
+        
+        # Close windows immediately
+        if self.options_window:
+            self.options_window.destroy()
+            self.options_window = None
+        
+        # Show a small notification that upload is in progress
+        self.root.after(0, lambda: messagebox.showinfo("Upload Started", "Screenshot upload started in background"))
 
     def check_credentials(self):
         """Check if we have valid credentials."""
@@ -832,35 +833,13 @@ class ScreenshotApp:
                     result = future.result()
                     if result.get('success'):
                         logger.info("Upload completed successfully")
-                        
-                        # Get the latest folder contents
-                        try:
-                            folders_response = self.session.get('https://127.0.0.1:5000/folders', verify=False)
-                            if folders_response.ok:
-                                logger.info("Final folders refresh successful")
-                                # Try to trigger a browser refresh via JavaScript
-                                refresh_js = self.session.get('https://127.0.0.1:5000/refresh-ui', verify=False)
-                                if refresh_js.ok:
-                                    logger.info("Browser refresh triggered")
-                            else:
-                                logger.error(f"Final folders refresh failed: {folders_response.status_code}")
-                        except Exception as e:
-                            logger.error(f"Error in final refresh: {e}")
-                        
-                        if hasattr(self, 'options_window') and self.options_window:
-                            self.hide_progress()
-                            messagebox.showinfo("Success", "Screenshot uploaded successfully! Please refresh the website if the image doesn't appear.")
-                            self.close_options_window()
+                        messagebox.showinfo("Success", "Screenshot uploaded successfully!")
                     else:
                         logger.error(f"Upload failed: {result.get('error', 'Unknown error')}")
-                        if hasattr(self, 'options_window') and self.options_window:
-                            self.hide_progress()
-                            messagebox.showerror("Error", f"Upload failed: {result.get('error', 'Unknown error')}")
+                        messagebox.showerror("Error", f"Upload failed: {result.get('error', 'Unknown error')}")
                 except Exception as e:
                     logger.error(f"Upload failed: {e}")
-                    if hasattr(self, 'options_window') and self.options_window:
-                        self.hide_progress()
-                        messagebox.showerror("Error", f"Upload failed: {str(e)}")
+                    messagebox.showerror("Error", f"Upload failed: {str(e)}")
                 self.upload_futures.remove(future)
         
         if self.running:

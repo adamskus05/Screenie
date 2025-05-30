@@ -589,24 +589,42 @@ def create_folder():
     try:
         data = request.get_json()
         if not data or 'name' not in data:
+            app.logger.error("Missing folder name in request")
             return jsonify({'error': 'Folder name is required'}), 400
         
         name = data['name'].strip()
         display_name = data.get('display_name', '').strip() or name
         
-        if not name or not is_safe_filename(name):
-            return jsonify({'error': 'Invalid folder name'}), 400
+        if not name:
+            app.logger.error("Empty folder name provided")
+            return jsonify({'error': 'Folder name cannot be empty'}), 400
+            
+        if not is_safe_filename(name):
+            app.logger.error(f"Invalid folder name: {name}")
+            return jsonify({'error': 'Invalid folder name. Use only letters, numbers, and underscores'}), 400
         
         # Get user's base folder
         user_base_folder = os.path.join(UPLOAD_FOLDER, f'user_{session["user_id"]}')
         folder_path = os.path.join(user_base_folder, name)
         
+        # Create user base folder if it doesn't exist
+        if not os.path.exists(user_base_folder):
+            app.logger.info(f"Creating user base folder: {user_base_folder}")
+            os.makedirs(user_base_folder)
+        
         # Check if folder already exists
         if os.path.exists(folder_path):
+            app.logger.error(f"Folder already exists: {folder_path}")
             return jsonify({'error': 'Folder already exists'}), 400
         
-        # Create the folder
-        os.makedirs(folder_path)
+        # Create the folder with proper permissions
+        try:
+            os.makedirs(folder_path)
+            os.chmod(folder_path, 0o755)  # Set proper permissions
+            app.logger.info(f"Successfully created folder: {folder_path}")
+        except OSError as e:
+            app.logger.error(f"Failed to create folder {folder_path}: {str(e)}")
+            return jsonify({'error': 'Failed to create folder due to permissions'}), 500
         
         log_audit(session['user_id'], 'CREATE_FOLDER', f'Created folder: {name}', request.remote_addr)
         

@@ -100,22 +100,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             
-            // Set the header to "All Folders"
-            const currentFolderElement = document.getElementById('currentFolder');
-            if (currentFolderElement) {
-                currentFolderElement.textContent = 'All Folders';
-            }
-            
-            // Hide the star button
-            const starBtn = document.getElementById('starFolderBtn');
-            if (starBtn) {
-                starBtn.classList.add('hidden');
-            }
+                // Set the header to "All Folders"
+                const currentFolderElement = document.getElementById('currentFolder');
+                if (currentFolderElement) {
+                    currentFolderElement.textContent = 'All Folders';
+                }
+                
+                // Hide the star button
+                const starBtn = document.getElementById('starFolderBtn');
+                if (starBtn) {
+                    starBtn.classList.add('hidden');
+                }
             
             // Update the sidebar folder list
             displayFolders(data.folders);
-            
-            // Display folders grid
+                
+                // Display folders grid
             displayFoldersGrid(data.folders);
             
             // Setup event listeners
@@ -339,7 +339,6 @@ function displayFolders(folders) {
                      data-folder-name="${folder.name}">
                     <div class="folder-icon">📁</div>
                     <div class="folder-name" title="${folderName}">${folderName}</div>
-                    <div class="folder-stats">${folder.screenshots ? folder.screenshots.length : 0} screenshots</div>
                     <div class="star-container">
                         ${folder.is_permanent ? 
                           '<span class="permanent-star">★★</span>' :
@@ -391,7 +390,7 @@ function selectFolder(folder) {
 
         // Add click handler for star button if it exists
         const starBtn = currentFolderElement.querySelector('.star-button');
-        if (starBtn) {
+    if (starBtn) {
             starBtn.addEventListener('click', async () => {
                 try {
                     const endpoint = folder.is_starred ? 'unstar' : 'star';
@@ -422,7 +421,7 @@ function selectFolder(folder) {
             });
         }
     }
-    
+
     // Update active state in folder list
     const folderItems = document.querySelectorAll('.folder-item');
     folderItems.forEach(item => {
@@ -477,10 +476,10 @@ function displayScreenshots(screenshots) {
                          crossorigin="use-credentials">
                     <div class="content-overlay">
                         <div class="screenshot-info">${formattedDate} ${formattedTime}</div>
-                    </div>
-                    ${isMultiSelectMode ? `
-                        <div class="absolute top-2 left-2 w-6 h-6 rounded border-2 border-white checkbox-overlay"></div>
-                    ` : ''}
+                </div>
+                ${isMultiSelectMode ? `
+                    <div class="absolute top-2 left-2 w-6 h-6 rounded border-2 border-white checkbox-overlay"></div>
+                ` : ''}
                     <div class="action-buttons">
                         <button class="btn-action" onclick="copyToClipboard('${screenshot.path}')" title="Copy to Clipboard">
                             📋
@@ -740,7 +739,7 @@ async function toggleStarFolder() {
         });
 
         if (!response.ok) {
-            const data = await response.json();
+        const data = await response.json();
             throw new Error(data.error || 'Failed to update star status');
         }
 
@@ -1037,32 +1036,32 @@ function showMoveModal(operation, screenshot) {
             return;
         }
 
-        foldersList.innerHTML = filteredFolders.map(folder => `
+            foldersList.innerHTML = filteredFolders.map(folder => `
             <div class="folder-option p-2 hover:bg-gray-100 cursor-pointer">
-                <input type="radio" name="targetFolder" value="${folder.name}" 
+                    <input type="radio" name="targetFolder" value="${folder.name}" 
                        class="radio-input mr-2">
                 <span class="folder-name">${folder.display_name || folder.name}</span>
-            </div>
-        `).join('');
+                </div>
+            `).join('');
 
-        // Add click handlers for folder options
-        const options = foldersList.querySelectorAll('.folder-option');
-        options.forEach(option => {
-            option.addEventListener('click', () => {
-                const radio = /** @type {HTMLInputElement} */ (option.querySelector('input[type="radio"]'));
-                if (radio) {
-                    // Uncheck all other radios
-                    const allRadios = foldersList.querySelectorAll('input[type="radio"]');
-                    allRadios.forEach(r => {
-                        const radioInput = /** @type {HTMLInputElement} */ (r);
-                        radioInput.checked = false;
-                    });
-                    // Check this radio
-                    radio.checked = true;
-                    confirmBtn.disabled = false;
-                }
+            // Add click handlers for folder options
+            const options = foldersList.querySelectorAll('.folder-option');
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    const radio = /** @type {HTMLInputElement} */ (option.querySelector('input[type="radio"]'));
+                    if (radio) {
+                        // Uncheck all other radios
+                        const allRadios = foldersList.querySelectorAll('input[type="radio"]');
+                        allRadios.forEach(r => {
+                            const radioInput = /** @type {HTMLInputElement} */ (r);
+                            radioInput.checked = false;
+                        });
+                        // Check this radio
+                        radio.checked = true;
+                        confirmBtn.disabled = false;
+                    }
+                });
             });
-        });
     })
     .catch(error => {
         console.error('Error loading folders:', error);
@@ -1127,26 +1126,26 @@ async function moveOrCopyScreenshot() {
                         }
                     }
 
-                    const requestData = {
+            const requestData = {
                         source_folder: sourceFolder,
-                        target_folder: selectedFolder.value,
+                target_folder: selectedFolder.value,
                         filename: screenshot,
-                        operation: operation
-                    };
+                operation: operation
+            };
 
                     console.log('Moving/copying screenshot:', requestData);
 
                     const response = await fetch(API_BASE_URL + '/move_screenshot', {
-                        method: 'POST',
-                        headers: {
+                method: 'POST',
+                headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(requestData),
-                        credentials: 'include'
-                    });
+                },
+                body: JSON.stringify(requestData),
+                credentials: 'include'
+            });
 
-                    if (!response.ok) {
+            if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.error || 'Failed to process screenshot');
                     }
@@ -1441,7 +1440,7 @@ function displayFoldersGrid(folders) {
     
     // Clear existing content
     grid.innerHTML = '';
-    
+
     if (!Array.isArray(folders)) {
         console.error('Folders data is not an array:', folders);
         return;
@@ -1477,11 +1476,11 @@ function displayFoldersGrid(folders) {
                          crossorigin="use-credentials">
                 ` : ''}
                 <div class="folder-icon">📁</div>
-            </div>
+                    </div>
             <div class="folder-info">
                 <div class="folder-name" title="${folderName}">${folderName}</div>
                 <div class="folder-stats">${screenshotCount} screenshot${screenshotCount !== 1 ? 's' : ''}</div>
-            </div>
+                        </div>
             ${folder.is_permanent ? '<div class="permanent-badge">★★</div>' : 
               folder.is_starred ? '<div class="star-badge">★</div>' : ''}
             <div class="folder-tooltip">
@@ -1597,7 +1596,7 @@ async function handleBulkDelete() {
                         })
                 );
                 
-                await Promise.all(promises);
+            await Promise.all(promises);
             }
         } finally {
             // Remove progress notification safely
