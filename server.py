@@ -35,7 +35,7 @@ SSL_KEY = os.environ.get('SSL_KEY')
 
 # Set up paths
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.environ.get('DATA_DIR', '/opt/render/project/data')  # Use Render's persistent disk
+DATA_DIR = os.environ.get('DATA_DIR', os.path.join(BASE_DIR, 'data'))  # Use local data directory by default
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(DATA_DIR, 'uploads'))
 DB_FILE = os.environ.get('DB_FILE', os.path.join(DATA_DIR, 'users.db'))
 LOG_FILE = os.path.join(DATA_DIR, 'access.log')

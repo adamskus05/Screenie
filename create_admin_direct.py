@@ -6,7 +6,7 @@ from datetime import datetime
 
 # Get the database path
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = '/opt/render/project/src/data'
+DATA_DIR = os.path.join(BASE_DIR, 'data')  # Local data directory
 DB_FILE = os.path.join(DATA_DIR, 'users.db')
 SCHEMA_FILE = os.path.join(BASE_DIR, 'schema.sql')
 
