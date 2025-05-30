@@ -121,6 +121,11 @@ def init_db():
             
             if not admin_exists:
                 app.logger.warning("No admin account detected, creating default admin...")
+                # Get admin credentials from environment variables
+                admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+                admin_password = os.environ.get('ADMIN_PASSWORD', secrets.token_urlsafe(32))
+                admin_email = os.environ.get('ADMIN_EMAIL', 'admin@example.com')
+                
                 # Create default admin user
                 cursor.execute('''
                     INSERT INTO users (
@@ -134,9 +139,9 @@ def init_db():
                         updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    'OPERATOR_1337',
-                    generate_password_hash('ITgwXqkIl2co6RsgAvBhvQ'),
-                    'admin@example.com',
+                    admin_username,
+                    generate_password_hash(admin_password),
+                    admin_email,
                     True,
                     True,
                     'active',
@@ -144,7 +149,9 @@ def init_db():
                     datetime.now()
                 ))
                 conn.commit()
-                app.logger.info("Default admin user created")
+                app.logger.info(f"Default admin user created with username: {admin_username}")
+                if os.environ.get('ADMIN_PASSWORD') is None:
+                    app.logger.warning(f"Generated random admin password: {admin_password}")
             
     except Exception as e:
         app.logger.error(f"Database initialization error: {str(e)}")
