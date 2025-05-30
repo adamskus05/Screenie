@@ -719,10 +719,10 @@ async function createFolder() {
             throw new Error(result.error || 'Failed to create folder');
         }
 
-        showNotification('Folder created successfully');
-        
-        // Close the modal
+        // Close the modal first
         closeModal();
+        
+        showNotification('Folder created successfully');
         
         // Refresh the folders list
         const folders = await loadFolders(true);
@@ -972,7 +972,24 @@ function showModal(title, content) {
 function closeModal() {
     const modal = document.getElementById('modal');
     if (modal) {
+        // Clear the modal content
+        modal.innerHTML = '';
+        // Hide the modal
         modal.classList.add('hidden');
+        // Remove any event listeners by recreating the modal content div
+        const newModalContent = document.createElement('div');
+        newModalContent.className = 'modal-content';
+        newModalContent.style.minWidth = '300px';
+        newModalContent.innerHTML = `
+            <div class="modal-title">
+                <span id="modalTitle"></span>
+                <button onclick="closeModal()" class="close-button">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="modalContent"></div>
+            </div>
+        `;
+        modal.appendChild(newModalContent);
     }
 }
 
