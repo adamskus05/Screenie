@@ -327,7 +327,7 @@ def login():
     """Handle user login."""
     try:
         data = request.json
-        username = data.get('username', '').strip().lower()  # Convert to lowercase
+        username = data.get('username', '').strip()  # Keep original case
         password = data.get('password', '')
         client_ip = request.remote_addr
         
@@ -344,8 +344,8 @@ def login():
             existing_users = [row[0] for row in cursor.fetchall()]
             app.logger.debug(f"Existing usernames in DB: {existing_users}")
             
-            # Use case-insensitive comparison
-            cursor.execute('SELECT id, password_hash, is_approved, status, username FROM users WHERE LOWER(username) = LOWER(?)', (username,))
+            # Use exact username match
+            cursor.execute('SELECT id, password_hash, is_approved, status, username FROM users WHERE username = ?', (username,))
             user = cursor.fetchone()
             
             if not user:

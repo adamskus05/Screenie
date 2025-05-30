@@ -1,0 +1,30 @@
+FROM php:8.1-alpine
+
+# Install required packages
+RUN apk add --no-cache sqlite git
+
+# Set up working directory
+WORKDIR /var/www/html
+
+# Clone adminer-sqlite
+RUN git clone https://github.com/vrana/adminer.git /tmp/adminer && \
+    cp /tmp/adminer/adminer/index.php index.php && \
+    cp -r /tmp/adminer/designs/* . && \
+    rm -rf /tmp/adminer
+
+# Create a simple configuration file
+RUN echo '<?php' > adminer.php && \
+    echo 'function adminer_object() {' >> adminer.php && \
+    echo '    class AdminerSoftware extends Adminer {' >> adminer.php && \
+    echo '        function login($login, $password) { return true; }' >> adminer.php && \
+    echo '        function databases() { return array(); }' >> adminer.php && \
+    echo '    }' >> adminer.php && \
+    echo '    return new AdminerSoftware;' >> adminer.php && \
+    echo '}' >> adminer.php && \
+    echo 'require "./index.php";' >> adminer.php
+
+# Expose port
+EXPOSE 8080
+
+# Start PHP server
+CMD ["php", "-S", "0.0.0.0:8080", "adminer.php"] 

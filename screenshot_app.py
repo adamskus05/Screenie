@@ -575,9 +575,10 @@ class ScreenshotApp:
                     'Accept-Language': 'en-US,en;q=0.9',
                     'Origin': 'app://screenie',
                     'Referer': 'https://screenie.space/',
-                    'Sec-Fetch-Site': 'same-origin',
+                    'Sec-Fetch-Site': 'cross-site',
                     'Sec-Fetch-Mode': 'cors',
-                    'Sec-Fetch-Dest': 'empty'
+                    'Sec-Fetch-Dest': 'empty',
+                    'Connection': 'keep-alive'
                 }
                 
                 # Upload with retry logic
@@ -816,7 +817,7 @@ class ScreenshotApp:
                 'Origin': 'app://screenie',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Referer': 'https://screenie.space/',
-                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-Site': 'cross-site',
                 'Sec-Fetch-Mode': 'cors',
                 'Sec-Fetch-Dest': 'empty',
                 'Connection': 'keep-alive'
@@ -828,7 +829,10 @@ class ScreenshotApp:
             # First make a GET request to get any necessary cookies
             try:
                 logger.info("Making initial GET request to /")
-                initial_response = self.session.get(f"{self.config['server']['url']}/")
+                initial_response = self.session.get(
+                    f"{self.config['server']['url']}/",
+                    headers=headers
+                )
                 logger.info(f"Initial cookies: {dict(initial_response.cookies)}")
             except Exception as e:
                 logger.warning(f"Initial GET request failed: {e}")
@@ -847,10 +851,11 @@ class ScreenshotApp:
             logger.debug(f"Request payload size: {len(str(login_data))} bytes")
             logger.info(f"Sending login request for user: {username}")
             
-            # Make the login request
+            # Make the login request with updated headers
             response = self.session.post(
                 url,
                 json=login_data,
+                headers=headers,
                 timeout=self.config["upload"]["timeout"],
                 allow_redirects=True
             )
@@ -882,7 +887,7 @@ class ScreenshotApp:
                 
                 auth_check = self.session.get(
                     check_auth_url,
-                    headers={'Origin': 'app://screenie'}
+                    headers=headers
                 )
                 logger.info(f"Auth check response: {auth_check.status_code}")
                 
