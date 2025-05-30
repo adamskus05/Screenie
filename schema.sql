@@ -1,11 +1,11 @@
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
+    username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     email TEXT,
     is_admin BOOLEAN DEFAULT 0,
     is_approved BOOLEAN DEFAULT 0,
-    status TEXT DEFAULT 'pending',
+    status TEXT DEFAULT 'active',
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS user_folders (
 
 CREATE TABLE IF NOT EXISTS registration_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
+    username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     email TEXT,
     request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

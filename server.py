@@ -37,6 +37,7 @@ DATA_DIR = os.environ.get('DATA_DIR', os.path.join(BASE_DIR, 'data'))
 UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
 DB_FILE = os.path.join(DATA_DIR, 'users.db')
 LOG_FILE = os.path.join(DATA_DIR, 'access.log')
+SCHEMA_FILE = os.path.join(BASE_DIR, 'schema.sql')
 
 # Ensure directories exist
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -104,10 +105,8 @@ def init_db():
         
         with sqlite3.connect(DB_FILE) as conn:
             # Read schema from the file
-            schema_path = os.path.join(os.path.dirname(DB_FILE), 'schema.sql')
-            
-            if os.path.exists(schema_path):
-                with open(schema_path, 'r') as f:
+            if os.path.exists(SCHEMA_FILE):
+                with open(SCHEMA_FILE, 'r') as f:
                     conn.executescript(f.read())
                     app.logger.info("Database initialized successfully")
             else:
