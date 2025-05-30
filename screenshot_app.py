@@ -760,15 +760,23 @@ class ScreenshotApp:
             # Create a new session with proper settings
             self.session = requests.Session()
             self.session.verify = self.config["server"]["verify_ssl"]
-            self.session.headers.update({
+            
+            # Set detailed headers
+            headers = {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'Origin': 'app://screenie',
-                'User-Agent': 'Screenie Desktop Client/1.0'
-            })
+                'User-Agent': 'Screenie Desktop Client/1.0',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+            self.session.headers.update(headers)
+            
+            logger.info("Using headers: %s", headers)
             
             # Attempt login
             url = f"{self.config['server']['url']}/login"
+            logger.info("Making login request to: %s", url)
+            
             response = self.session.post(
                 url,
                 json={"username": username, "password": password},
@@ -776,7 +784,16 @@ class ScreenshotApp:
             )
             
             logger.info(f"Login response status: {response.status_code}")
+            logger.info(f"Response headers: {dict(response.headers)}")
             logger.info(f"Response cookies: {dict(response.cookies)}")
+            
+            try:
+                response_data = response.json()
+                logger.info(f"Response data: {response_data}")
+            except Exception as e:
+                logger.error(f"Failed to parse response JSON: {e}")
+                logger.error(f"Raw response content: {response.text}")
+                response_data = {}
             
             if response.status_code == 200:
                 # Store cookies
@@ -785,12 +802,15 @@ class ScreenshotApp:
                 
                 # Verify the session is working
                 check_auth_url = f"{self.config['server']['url']}/check-auth"
+                logger.info("Verifying session with check-auth endpoint")
+                
                 auth_check = self.session.get(
                     check_auth_url,
                     headers={'Origin': 'app://screenie'}
                 )
                 logger.info(f"Auth check response: {auth_check.status_code}")
-                if auth_check.status_code == 200:
+                
+                try:
                     auth_data = auth_check.json()
                     logger.info(f"Auth check data: {auth_data}")
                     if auth_data.get('authenticated'):
@@ -798,24 +818,22 @@ class ScreenshotApp:
                     else:
                         logger.error("Auth check failed after successful login")
                         return False
-                else:
-                    logger.error(f"Auth check failed with status: {auth_check.status_code}")
+                except Exception as e:
+                    logger.error(f"Failed to parse auth check response: {e}")
+                    logger.error(f"Raw auth check response: {auth_check.text}")
                     return False
             
             # Handle error responses
-            error_message = "Unknown error"
-            try:
-                error_data = response.json()
-                error_message = error_data.get('error', 'Unknown error')
-            except Exception as e:
-                logger.error(f"Failed to parse error response: {e}")
-                logger.error(f"Raw response content: {response.text}")
-            
+            error_message = response_data.get('error', 'Unknown error')
             logger.error(f"Authentication failed: {error_message}")
             return False
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error during authentication: {e}")
+            if isinstance(e, requests.exceptions.SSLError):
+                logger.error("SSL verification failed. Check your SSL settings.")
+            elif isinstance(e, requests.exceptions.ConnectionError):
+                logger.error("Connection failed. Check if the server is accessible.")
             return False
         except Exception as e:
             logger.error(f"Unexpected error during authentication: {e}")
