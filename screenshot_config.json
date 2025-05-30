@@ -1,0 +1,15 @@
+{
+    "server": {
+        "url": "https://screenie.onrender.com",
+        "verify_ssl": true
+    },
+    "upload": {
+        "max_retries": 3,
+        "timeout": 30,
+        "max_size": 16777216
+    },
+    "ui": {
+        "tray_icon": "💩",
+        "show_notifications": true
+    }
+} 

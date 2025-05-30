@@ -41,10 +41,40 @@ class ScreenshotApp:
     def __init__(self):
         logger.info("Initializing Screenshot App...")
         
+        # Load configuration
+        try:
+            with open('screenshot_config.json', 'r') as f:
+                self.config = json.load(f)
+            logger.info("Loaded configuration from screenshot_config.json")
+        except Exception as e:
+            logger.error(f"Failed to load configuration: {e}")
+            self.config = {
+                "server": {
+                    "url": "https://screenie.onrender.com",
+                    "verify_ssl": True
+                },
+                "upload": {
+                    "max_retries": 3,
+                    "timeout": 30,
+                    "max_size": 16777216
+                },
+                "ui": {
+                    "tray_icon": "💩",
+                    "show_notifications": True
+                }
+            }
+            # Save default configuration
+            try:
+                with open('screenshot_config.json', 'w') as f:
+                    json.dump(self.config, f, indent=4)
+                logger.info("Created default configuration file")
+            except Exception as e:
+                logger.error(f"Failed to save default configuration: {e}")
+        
         # Create a session to reuse for all requests
         self.session = requests.Session()
-        self.session.verify = False  # Disable SSL verification for local development
-        logger.info("Created HTTP session")
+        self.session.verify = self.config["server"]["verify_ssl"]
+        logger.info(f"Created HTTP session with SSL verification: {self.session.verify}")
         
         self.is_selecting = False
         self.start_x = None
@@ -527,168 +557,60 @@ class ScreenshotApp:
         self.close_options_window()
     
     def handle_upload(self):
-        """Handle upload with immediate feedback and retry mechanism."""
-        max_retries = 3
-        retry_delay = 1  # seconds
-        
-        # Show progress before closing windows
-        if self.options_window and hasattr(self, 'progress_frame'):
+        """Handle screenshot upload."""
+        if not self.screenshot:
+            return
+
+        def upload_task():
             try:
-                self.show_progress("Uploading screenshot...")
-            except Exception as e:
-                logger.error(f"Error showing progress: {e}")
-            
-            def upload_task():
-                try:
-                    # Convert screenshot to bytes
-                    img_byte_arr = io.BytesIO()
-                    self.current_screenshot.save(img_byte_arr, format='PNG')
-                    img_data = img_byte_arr.getvalue()
-                    
-                    # Check if we need to authenticate
-                    if not self.check_credentials():
-                        self.root.after(0, self.show_login_window)
-                        return {'success': False, 'error': 'Authentication required'}
-                        
-                    for attempt in range(max_retries):
-                        try:
-                            # Create folder with current date
-                            today = datetime.now().strftime('%Y-%m-%d')
-                            
-                            # First create the folder with proper path formatting
-                            folder_data = {
-                                'name': today,
-                                'display_name': today,
-                                'path': f'user_{self.session.cookies.get("user_id", "1")}/{today}',
-                                'is_permanent': False,
-                                'is_starred': False
-                            }
-                            
-                            # First create the folder
-                            folder_response = self.session.post(
-                                'https://127.0.0.1:5000/folder',
-                                json=folder_data,
-                                verify=False
-                            )
-                            
-                            # Log the request and response details
-                            logger.info(f"Folder creation request data: {folder_data}")
-                            logger.info(f"Folder creation response status: {folder_response.status_code}")
-                            try:
-                                response_json = folder_response.json()
-                                logger.info(f"Folder creation response: {response_json}")
-                            except ValueError:
-                                logger.error(f"Invalid JSON response: {folder_response.text}")
-                            
-                            # If unauthorized, show login window
-                            if folder_response.status_code == 401:
-                                self.root.after(0, self.show_login_window)
-                                return {'success': False, 'error': 'Authentication required'}
-                            
-                            # Check if folder creation was successful or if folder already exists
-                            if folder_response.status_code != 200:
-                                try:
-                                    response_json = folder_response.json()
-                                    if folder_response.status_code == 400 and response_json.get('error') == 'Folder already exists':
-                                        logger.info("Folder already exists, proceeding with upload")
-                                    else:
-                                        logger.error(f"Failed to create folder: {response_json.get('error', 'Unknown error')}")
-                                        return {'success': False, 'error': f"Failed to create folder: {response_json.get('error', 'Unknown error')}"}
-                                except ValueError:
-                                    logger.error(f"Failed to create folder: {folder_response.status_code}")
-                                    return {'success': False, 'error': f'Failed to create folder: {folder_response.status_code}'}
-                            
-                            # Now upload the file to the folder
-                            timestamp = datetime.now().strftime('%H-%M-%S')
-                            files = {'file': (f'screenshot_{timestamp}.png', img_data, 'image/png')}
-                            data = {'folder': today}
-                            
-                            response = self.session.post(
-                                'https://127.0.0.1:5000/upload',
-                                files=files,
-                                data=data,
-                                verify=False
-                            )
-                            
-                            # Log upload response
-                            logger.info(f"Upload response status: {response.status_code}")
-                            try:
-                                response_text = response.text
-                                logger.info(f"Upload response: {response_text}")
-                            except Exception as e:
-                                logger.error(f"Failed to read upload response: {e}")
-                            
-                            if response.status_code == 401:
-                                self.root.after(0, self.show_login_window)
-                                return {'success': False, 'error': 'Authentication required'}
-                            
-                            try:
-                                response.raise_for_status()
-                            except requests.RequestException as e:
-                                logger.error(f"Upload request failed: {e}")
-                                return {'success': False, 'error': f'Upload failed: {str(e)}'}
-                            
-                            # Check the response content
-                            try:
-                                result = response.json()
-                                if not result.get('success', False):
-                                    error_msg = result.get('error', 'Unknown error')
-                                    logger.error(f"Upload failed: {error_msg}")
-                                    return {'success': False, 'error': f'Upload failed: {error_msg}'}
-                                
-                                # Get the folder path from the response
-                                screenshot_path = result.get('path', '')
-                                if screenshot_path:
-                                    logger.info(f"Screenshot saved at: {screenshot_path}")
-                                
-                                # Force a folder refresh by calling list_folders
-                                try:
-                                    folders_response = self.session.get('https://127.0.0.1:5000/folders', verify=False)
-                                    if folders_response.ok:
-                                        logger.info("Folders listing refreshed")
-                                        # Also try to get the specific folder contents
-                                        folder_response = self.session.get(
-                                            f'https://127.0.0.1:5000/folder/{today}',
-                                            verify=False
-                                        )
-                                        if folder_response.ok:
-                                            logger.info("Folder contents refreshed")
-                                    else:
-                                        logger.error(f"Failed to refresh folders: {folders_response.status_code}")
-                                except Exception as e:
-                                    logger.error(f"Error refreshing folders: {e}")
-                                
-                                logger.info(f"Upload successful: {result}")
-                                return {'success': True, 'message': 'Upload successful', 'result': result}
-                            except ValueError as e:
-                                logger.error(f"Invalid JSON response: {e}")
-                                return {'success': False, 'error': 'Invalid server response'}
-                            
-                        except requests.RequestException as e:
-                            if attempt == max_retries - 1:  # Last attempt
-                                raise
-                            time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
-                            
-                except Exception as e:
-                    logger.error(f"Upload task error: {e}")
-                    return {'success': False, 'error': str(e)}
+                # Optimize image
+                img_byte_arr = BytesIO()
+                self.screenshot.save(img_byte_arr, format='PNG')
+                img_byte_arr = img_byte_arr.getvalue()
+
+                # Prepare upload
+                url = f"{self.config['server']['url']}/upload"
+                files = {'file': ('screenshot.png', img_byte_arr, 'image/png')}
                 
-                return {'success': False, 'error': 'Max retries exceeded'}
-            
-            # Start upload in background
-            future = self.upload_executor.submit(upload_task)
-            self.upload_futures.append(future)
-            
-        # Close the windows after starting the upload
-        if self.select_window:
-            self.select_window.destroy()
-            self.select_window = None
-        
-        if self.options_window:
-            self.options_window.destroy()
-            self.options_window = None
-        
-        return {'success': True, 'message': 'Upload started'}
+                # Get current date for folder name
+                today = datetime.now().strftime('%Y-%m-%d')
+                
+                # Upload with retry logic
+                for attempt in range(self.config["upload"]["max_retries"]):
+                    try:
+                        response = self.session.post(
+                            url,
+                            files=files,
+                            data={'folder': today},
+                            timeout=self.config["upload"]["timeout"]
+                        )
+                        
+                        if response.status_code == 200:
+                            data = response.json()
+                            return {
+                                'success': True,
+                                'url': f"{self.config['server']['url']}{data['path']}"
+                            }
+                        else:
+                            logger.error(f"Upload failed with status {response.status_code}")
+                            
+                    except Exception as e:
+                        logger.error(f"Upload attempt {attempt + 1} failed: {e}")
+                        if attempt < self.config["upload"]["max_retries"] - 1:
+                            time.sleep(1)  # Wait before retrying
+                            continue
+                        break
+                
+                return {'success': False, 'error': 'Upload failed after retries'}
+                
+            except Exception as e:
+                logger.error(f"Upload task error: {e}")
+                return {'success': False, 'error': str(e)}
+
+        # Submit upload task
+        future = self.upload_executor.submit(upload_task)
+        self.upload_futures.append(future)
+        self.show_progress("Uploading screenshot...")
 
     def check_credentials(self):
         """Check if we have valid credentials."""
@@ -830,31 +752,19 @@ class ScreenshotApp:
         logger.info("Login window created and displayed")
 
     def authenticate(self, username, password):
-        """Authenticate with the server using user credentials."""
+        """Authenticate with the server."""
         try:
-            # Clear any existing cookies
-            self.session.cookies.clear()
-            
+            url = f"{self.config['server']['url']}/login"
             response = self.session.post(
-                'https://127.0.0.1:5000/login',
-                json={
-                    'username': username,
-                    'password': password
-                },
-                verify=False
+                url,
+                json={"username": username, "password": password},
+                timeout=self.config["upload"]["timeout"]
             )
-            
-            if response.ok:
-                logger.info("Authentication successful")
-                return True
-                
-            logger.error(f"Authentication failed with status code: {response.status_code}")
-            return False
-            
+            return response.status_code == 200
         except Exception as e:
-            logger.error(f"Authentication failed: {e}")
+            logger.error(f"Authentication error: {e}")
             return False
-    
+
     def get_auth_cookies(self):
         """Get authentication cookies from the session."""
         return dict(self.session.cookies)
@@ -957,10 +867,14 @@ class ScreenshotApp:
             self.root.after(100, self.check_upload_futures)
 
     def check_server_connection(self):
-        """Check if the server is running and accessible."""
+        """Check if the server is accessible."""
         try:
-            response = self.session.get('https://127.0.0.1:5000/check-auth', verify=False, timeout=5)
-            return True
+            url = f"{self.config['server']['url']}/check-auth"
+            response = self.session.get(
+                url,
+                timeout=self.config["upload"]["timeout"]
+            )
+            return response.status_code == 200
         except Exception as e:
             logger.error(f"Server connection error: {e}")
             messagebox.showerror(
