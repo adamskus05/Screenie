@@ -1756,14 +1756,14 @@
     </div>
 
     <!-- Modal Template -->
-    <div id="modal" class="modal fixed inset-0 hidden flex items-center justify-center z-50">
-        <div class="modal-content max-w-md w-full mx-4">
-            <div class="modal-title flex justify-between items-center">
-                <span id="modalTitle"></span>
-                <button class="title-bar-button" onclick="closeModal()">×</button>
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="modal-content bg-white rounded-lg p-6 max-w-md w-full mx-4 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-xl font-semibold"></h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">&times;</button>
             </div>
-            <div id="modalContent" class="p-4 bg-gray-100">
-                <!-- Content will be dynamically inserted here -->
+            <div id="modalContent">
+                <!-- Modal content will be populated here -->
             </div>
         </div>
     </div>

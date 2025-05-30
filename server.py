@@ -33,7 +33,7 @@ ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*').split(',')
 
 # Set up paths
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.environ.get('DATA_DIR', '/opt/render/project/data')  # Changed to use Render's persistent disk
+DATA_DIR = os.environ.get('DATA_DIR', '/opt/render/project/data')  # Use Render's persistent disk
 UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
 DB_FILE = os.path.join(DATA_DIR, 'users.db')
 LOG_FILE = os.path.join(DATA_DIR, 'access.log')
@@ -42,8 +42,12 @@ SCHEMA_FILE = os.path.join(BASE_DIR, 'schema.sql')
 # Ensure directories exist with proper permissions
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.chmod(DATA_DIR, 0o755)  # Add proper permissions
-os.chmod(UPLOAD_FOLDER, 0o755)  # Add proper permissions
+os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
+os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+
+# Set proper permissions
+os.chmod(DATA_DIR, 0o755)
+os.chmod(UPLOAD_FOLDER, 0o755)
 
 # Force HTTPS
 app.config['SESSION_COOKIE_SECURE'] = True
