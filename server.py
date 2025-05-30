@@ -121,50 +121,61 @@ def init_db():
         # Ensure the database directory exists
         os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
         
-        db_exists = os.path.exists(DB_FILE)
+        # Check if database exists and has tables
+        if os.path.exists(DB_FILE):
+            try:
+                with sqlite3.connect(DB_FILE) as conn:
+                    cursor = conn.cursor()
+                    # Check if users table exists and has data
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+                    if cursor.fetchone() is not None:
+                        cursor.execute('SELECT COUNT(*) FROM users')
+                        if cursor.fetchone()[0] > 0:
+                            app.logger.info("Database exists and has users, skipping initialization")
+                            return
+            except sqlite3.Error as e:
+                app.logger.error(f"Error checking existing database: {e}")
+                # If there's an error reading the database, it might be corrupted
+                # Backup the corrupted database
+                if os.path.exists(DB_FILE):
+                    backup_file = f"{DB_FILE}.backup.{int(time.time())}"
+                    try:
+                        shutil.copy2(DB_FILE, backup_file)
+                        app.logger.info(f"Backed up possibly corrupted database to {backup_file}")
+                    except Exception as be:
+                        app.logger.error(f"Failed to backup corrupted database: {be}")
         
-        # Connect to database (this will create it if it doesn't exist)
-        with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            
-            # Check if users table exists and has data
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-            has_users_table = cursor.fetchone() is not None
-            
-            if has_users_table:
-                cursor.execute('SELECT COUNT(*) FROM users')
-                user_count = cursor.fetchone()[0]
-                if user_count > 0:
-                    app.logger.info("Database exists and has users, skipping initialization")
-                    return
-            
-            # If we get here, either:
-            # 1. Database doesn't exist
-            # 2. Users table doesn't exist
-            # 3. Users table exists but is empty
-            app.logger.info("Initializing database...")
-            
-            # Read and execute schema
-            if os.path.exists(SCHEMA_FILE):
+        # If we get here, we need to initialize the database
+        app.logger.info("Initializing database...")
+        
+        # Read and execute schema
+        if os.path.exists(SCHEMA_FILE):
+            with sqlite3.connect(DB_FILE) as conn:
                 with open(SCHEMA_FILE, 'r') as f:
                     conn.executescript(f.read())
                 app.logger.info("Database schema initialized successfully")
-            else:
-                app.logger.error("Schema file not found")
-                raise FileNotFoundError("Schema file not found")
-            
-            # Check if we need to create default admin
-            cursor.execute('SELECT COUNT(*) FROM users')
-            if cursor.fetchone()[0] == 0:
-                app.logger.warning("No users found, creating default admin...")
-                cursor.execute('''
-                    INSERT INTO users (username, password_hash, is_admin, is_approved, status)
-                    VALUES (?, ?, 1, 1, 'active')
-                ''', ('OPERATOR_1337', generate_password_hash('ITgwXqkIl2co6RsgAvBhvQ')))
-                conn.commit()
-                app.logger.info("Default admin user created with username: OPERATOR_1337")
-            
-            app.logger.info("Database initialization completed successfully")
+                
+                # Check if we need to create default admin
+                cursor = conn.cursor()
+                cursor.execute('SELECT COUNT(*) FROM users')
+                if cursor.fetchone()[0] == 0:
+                    app.logger.warning("No users found, creating default admin...")
+                    cursor.execute('''
+                        INSERT INTO users (username, password_hash, is_admin, is_approved, status)
+                        VALUES (?, ?, 1, 1, 'active')
+                    ''', ('OPERATOR_1337', generate_password_hash('ITgwXqkIl2co6RsgAvBhvQ')))
+                    conn.commit()
+                    app.logger.info("Default admin user created with username: OPERATOR_1337")
+                
+                # Set proper file permissions
+                try:
+                    os.chmod(DB_FILE, 0o600)  # Only owner can read/write
+                    app.logger.info("Set restrictive permissions on database file")
+                except Exception as e:
+                    app.logger.warning(f"Failed to set database file permissions: {e}")
+        else:
+            app.logger.error("Schema file not found")
+            raise FileNotFoundError("Schema file not found")
             
     except Exception as e:
         app.logger.error(f"Error initializing database: {e}")
