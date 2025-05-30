@@ -1488,11 +1488,12 @@ def reject_registration_request(request_id):
 @app.after_request
 def add_security_headers(response):
     """Add security headers to all responses."""
-    # Remove strict security headers that might cause issues
-    response.headers['Access-Control-Allow-Origin'] = '*'
+    # Allow requests from desktop app
+    response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Max-Age'] = '3600'
     
     # Update CSP to be more permissive
     response.headers['Content-Security-Policy'] = (

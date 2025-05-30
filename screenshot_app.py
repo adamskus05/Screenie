@@ -759,11 +759,13 @@ class ScreenshotApp:
             
             # First, try to check if we're already authenticated
             check_auth_url = f"{self.config['server']['url']}/check-auth"
+            logger.info(f"Checking current auth status at: {check_auth_url}")
             check_response = self.session.get(
                 check_auth_url,
                 timeout=self.config["upload"]["timeout"],
                 verify=self.config["server"]["verify_ssl"]
             )
+            logger.info(f"Auth check response status: {check_response.status_code}")
             
             if check_response.status_code == 200 and check_response.json().get('authenticated'):
                 logger.info("Already authenticated")
@@ -771,18 +773,25 @@ class ScreenshotApp:
             
             # If not authenticated, try to login
             url = f"{self.config['server']['url']}/login"
+            logger.info(f"Attempting login at: {url}")
+            
+            # Log request details (excluding password)
+            headers = {
+                'Content-Type': 'application/json',
+                'Origin': self.config['server']['url']
+            }
+            logger.info(f"Request headers: {headers}")
+            
             response = self.session.post(
                 url,
                 json={"username": username, "password": password},
                 timeout=self.config["upload"]["timeout"],
                 verify=self.config["server"]["verify_ssl"],
-                headers={
-                    'Content-Type': 'application/json',
-                    'Origin': self.config['server']['url']
-                }
+                headers=headers
             )
             
             logger.info(f"Login response status: {response.status_code}")
+            logger.info(f"Login response headers: {dict(response.headers)}")
             
             if response.status_code == 200:
                 # Save cookies to session
@@ -790,16 +799,22 @@ class ScreenshotApp:
                 
                 # Save cookies to disk for persistence
                 cookie_dict = {cookie.name: cookie.value for cookie in response.cookies}
-                logger.info(f"Saving cookies: {cookie_dict}")
+                logger.info(f"Received cookies: {cookie_dict}")
                 self.save_auth_cookies(cookie_dict)
                 
                 # Verify authentication was successful
+                logger.info("Verifying authentication...")
                 verify_response = self.session.get(
                     check_auth_url,
                     timeout=self.config["upload"]["timeout"],
                     verify=self.config["server"]["verify_ssl"],
                     headers={'Origin': self.config['server']['url']}
                 )
+                
+                logger.info(f"Verify response status: {verify_response.status_code}")
+                if verify_response.status_code == 200:
+                    verify_data = verify_response.json()
+                    logger.info(f"Verify response data: {verify_data}")
                 
                 if verify_response.status_code == 200 and verify_response.json().get('authenticated'):
                     logger.info("Authentication successful")
@@ -810,13 +825,17 @@ class ScreenshotApp:
             else:
                 try:
                     error_data = response.json()
-                    logger.error(f"Authentication failed: {error_data.get('error', 'Unknown error')}")
-                except:
-                    logger.error(f"Authentication failed with status code: {response.status_code}")
+                    error_message = error_data.get('error', 'Unknown error')
+                    logger.error(f"Authentication failed: {error_message}")
+                    logger.error(f"Full error response: {error_data}")
+                except Exception as e:
+                    logger.error(f"Failed to parse error response: {e}")
+                    logger.error(f"Raw response content: {response.text}")
                 return False
                 
         except Exception as e:
             logger.error(f"Authentication error: {e}")
+            logger.exception("Full authentication error traceback:")
             return False
 
     def get_auth_cookies(self):
