@@ -725,9 +725,17 @@ async function createFolder() {
         }
 
         showNotification('Folder created successfully');
-        closeModal();
+        
+        // Close the modal first
+        const modal = document.getElementById('modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.innerHTML = ''; // Clear the modal content
+        }
+        
         // Refresh the folders list
         await loadFolders(true);
+        
         // Switch to the new folder
         const folders = await loadFolders(true);
         const newFolder = folders.find(f => f.name === name);
