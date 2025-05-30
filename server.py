@@ -595,7 +595,10 @@ def serve_image(filename):
 def create_folder():
     """Create a new folder."""
     try:
+        app.logger.debug("Received create folder request")
         data = request.get_json()
+        app.logger.debug(f"Request data: {data}")
+        
         if not data or 'name' not in data:
             app.logger.error("Missing folder name in request")
             return jsonify({'error': 'Folder name is required'}), 400
@@ -614,6 +617,7 @@ def create_folder():
         # Get user's base folder
         user_base_folder = os.path.join(UPLOAD_FOLDER, f'user_{session["user_id"]}')
         folder_path = os.path.join(user_base_folder, name)
+        app.logger.debug(f"Creating folder at path: {folder_path}")
         
         # Create user base folder if it doesn't exist
         if not os.path.exists(user_base_folder):
@@ -644,7 +648,7 @@ def create_folder():
             
             log_audit(session['user_id'], 'CREATE_FOLDER', f'Created folder: {name}', request.remote_addr)
             
-            return jsonify({
+            response_data = {
                 'success': True,
                 'folder': {
                     'name': name,
@@ -656,7 +660,9 @@ def create_folder():
                     'is_starred': False,
                     'screenshots': []
                 }
-            })
+            }
+            app.logger.debug(f"Returning response: {response_data}")
+            return jsonify(response_data)
             
         except OSError as e:
             app.logger.error(f"Failed to create folder {folder_path}: {str(e)}")

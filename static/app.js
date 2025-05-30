@@ -704,23 +704,31 @@ async function createFolder() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
-            body: JSON.stringify({ name, display_name: displayName }),
+            body: JSON.stringify({ 
+                name: name,
+                display_name: displayName 
+            }),
             credentials: 'include'
         });
 
-        const data = await response.json();
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to create folder');
+        }
 
-        if (response.ok && data.success) {
+        const data = await response.json();
+        if (data.success) {
             closeModal();
             await loadFolders(true);  // Force reload folders
             showNotification('Folder created successfully');
         } else {
-            showNotification(data.error || 'Failed to create folder', 'error');
+            throw new Error(data.error || 'Failed to create folder');
         }
     } catch (error) {
         console.error('Error creating folder:', error);
-        showNotification('Failed to create folder', 'error');
+        showNotification(error.message || 'Failed to create folder', 'error');
     }
 }
 
