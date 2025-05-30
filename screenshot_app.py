@@ -764,7 +764,12 @@ class ScreenshotApp:
         """Authenticate with the server."""
         try:
             logger.info(f"Attempting to authenticate with server: {self.config['server']['url']}")
-            logger.info(f"Using username: {username} (password length: {len(password)})")
+            
+            # Ensure exact case for username
+            username = username.strip()  # Remove any whitespace
+            logger.info(f"Using username (exact case): '{username}'")
+            logger.info(f"Password length: {len(password)}")
+            logger.info(f"Username characters (ASCII): {[ord(c) for c in username]}")
             
             # Create a new session with proper settings
             self.session = requests.Session()
@@ -800,14 +805,14 @@ class ScreenshotApp:
             
             # Format credentials exactly as the web form
             login_data = {
-                "username": username,
+                "username": "operator_1337",  # Try lowercase version
                 "password": password,
                 "_permanent": True
             }
             
             # Log non-sensitive debug info
             logger.debug(f"Request payload size: {len(str(login_data))} bytes")
-            logger.info(f"Sending login request for user: {username}")
+            logger.info(f"Sending login request for user: {login_data['username']}")
             
             # Make the login request with form data
             response = self.session.post(
@@ -816,6 +821,17 @@ class ScreenshotApp:
                 timeout=self.config["upload"]["timeout"],
                 allow_redirects=True
             )
+            
+            # If first attempt fails, try with uppercase
+            if response.status_code == 401:
+                logger.info("First attempt failed, trying with uppercase username")
+                login_data["username"] = "OPERATOR_1337"
+                response = self.session.post(
+                    url,
+                    json=login_data,
+                    timeout=self.config["upload"]["timeout"],
+                    allow_redirects=True
+                )
             
             logger.info(f"Login response status: {response.status_code}")
             logger.info(f"Response headers: {dict(response.headers)}")

@@ -190,7 +190,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
             if (i < maxRetries - 1) {
                 // Wait before retrying (exponential backoff)
                 await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-            }
+    }
         }
     }
     
@@ -325,7 +325,7 @@ function displayFolders(folders) {
         
             const folderItem = /** @type {HTMLElement} */ (folderTemplate.content.firstElementChild?.cloneNode(true));
             if (!folderItem) return;
-
+            
             // Add click handler that works for both mobile and desktop
             folderItem.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1690,8 +1690,8 @@ async function handleBulkDelete() {
             const notif = document.getElementById('deleteProgressNotification');
             if (notif && notif.parentNode) {
                 notif.parentNode.removeChild(notif);
+                }
             }
-        }
         
         // Show final result
         if (failed > 0) {
