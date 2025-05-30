@@ -2,11 +2,7 @@ services:
   - type: web
     name: screenie
     env: python
-    buildCommand: |
-      pip install -r requirements.txt
-      mkdir -p /opt/render/project/src/data
-      sqlite3 /opt/render/project/src/data/users.db < schema.sql
-      sqlite3 /opt/render/project/src/data/users.db < force_admin.sql
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --bind 0.0.0.0:$PORT server:app
     envVars:
       - key: ENVIRONMENT
