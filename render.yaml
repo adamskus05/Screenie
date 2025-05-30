@@ -4,7 +4,9 @@ services:
     env: python
     buildCommand: |
       pip install -r requirements.txt
-      python create_admin_direct.py
+      mkdir -p /opt/render/project/src/data
+      sqlite3 /opt/render/project/src/data/users.db < schema.sql
+      sqlite3 /opt/render/project/src/data/users.db < force_admin.sql
     startCommand: gunicorn --bind 0.0.0.0:$PORT server:app
     envVars:
       - key: ENVIRONMENT
