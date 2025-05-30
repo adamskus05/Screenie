@@ -200,53 +200,53 @@ class ScreenshotApp:
         try:
             logger.info("Creating system tray icon...")
             
-        # Create a new image with a transparent background
-        width = 64
-        height = 64
-        image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(image)
-        
-        # Draw the poop emoji (💩)
+            # Create a new image with a transparent background
+            width = 64
+            height = 64
+            image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(image)
+            
+            # Draw the poop emoji (💩)
             font_size = 48
             font = None
             
-        try:
-            from PIL import ImageFont
-            if sys.platform == 'win32':
+            try:
+                from PIL import ImageFont
+                if sys.platform == 'win32':
                     font = ImageFont.truetype('seguiemj.ttf', font_size)
-            elif sys.platform == 'darwin':
+                elif sys.platform == 'darwin':
                     font = ImageFont.truetype('Apple Color Emoji.ttc', font_size)
-            else:
+                else:
                     font = ImageFont.truetype('NotoColorEmoji.ttf', font_size)
             except Exception as e:
                 logger.warning(f"Failed to load emoji font: {e}")
-            font = None
+                font = None
 
-        # Calculate text position to center it
-        emoji = "💩"
-        if font:
-            text_bbox = draw.textbbox((0, 0), emoji, font=font)
-            text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
-        else:
-            text_width = font_size
-            text_height = font_size
-        
-        x = (width - text_width) // 2
-        y = (height - text_height) // 2
-        
+            # Calculate text position to center it
+            emoji = "💩"
+            if font:
+                text_bbox = draw.textbbox((0, 0), emoji, font=font)
+                text_width = text_bbox[2] - text_bbox[0]
+                text_height = text_bbox[3] - text_bbox[1]
+            else:
+                text_width = font_size
+                text_height = font_size
+            
+            x = (width - text_width) // 2
+            y = (height - text_height) // 2
+            
             # Draw the emoji
             draw.text((x, y), emoji, font=font, fill='black')
 
             # Create system tray menu
-        menu = Menu(
-            MenuItem('Take Screenshot', lambda: self.screenshot_queue.put('take_screenshot')),
+            menu = Menu(
+                MenuItem('Take Screenshot', lambda: self.screenshot_queue.put('take_screenshot')),
                 MenuItem('Exit', lambda: self.quit_app())
             )
             
             # Create and run system tray icon
             self.icon = Icon('Screenie', image, 'Screenie', menu)
-        threading.Thread(target=self.icon.run, daemon=True).start()
+            threading.Thread(target=self.icon.run, daemon=True).start()
             
             logger.info("System tray icon created successfully")
             
@@ -258,25 +258,25 @@ class ScreenshotApp:
         """Safely quit the application."""
         try:
             logger.info("Quitting application...")
-        self.running = False
+            self.running = False
             
             # Stop keyboard listener
-        if hasattr(self, 'keyboard_listener'):
-            self.keyboard_listener.stop()
+            if hasattr(self, 'keyboard_listener'):
+                self.keyboard_listener.stop()
             
             # Stop system tray icon
             if self.icon:
                 self.icon.stop()
             
             # Clean up executor
-        if hasattr(self, 'upload_executor'):
-            self.upload_executor.shutdown(wait=False)
+            if hasattr(self, 'upload_executor'):
+                self.upload_executor.shutdown(wait=False)
             
             # Destroy any remaining windows
-        if self.select_window:
-            self.select_window.destroy()
-        if self.options_window:
-            self.options_window.destroy()
+            if self.select_window:
+                self.select_window.destroy()
+            if self.options_window:
+                self.options_window.destroy()
             
             # Quit the main window
             self.root.quit()
@@ -555,9 +555,9 @@ class ScreenshotApp:
         if not self.screenshot:
             return
 
-            def upload_task():
-                try:
-                    # Optimize image
+        def upload_task():
+            try:
+                # Optimize image
                 img_byte_arr = BytesIO()
                 self.current_screenshot.save(img_byte_arr, format='PNG')
                 img_byte_arr = img_byte_arr.getvalue()
@@ -567,14 +567,14 @@ class ScreenshotApp:
                 files = {'file': ('screenshot.png', img_byte_arr, 'image/png')}
                 
                 # Get current date for folder name
-                            today = datetime.now().strftime('%Y-%m-%d')
-                            
+                today = datetime.now().strftime('%Y-%m-%d')
+                
                 # Upload with retry logic
                 for attempt in range(self.config["upload"]["max_retries"]):
                     try:
-                            response = self.session.post(
+                        response = self.session.post(
                             url,
-                                files=files,
+                            files=files,
                             data={'folder': today},
                             timeout=self.config["upload"]["timeout"]
                         )
@@ -597,14 +597,14 @@ class ScreenshotApp:
                 
                 return {'success': False, 'error': 'Upload failed after retries'}
                 
-                except Exception as e:
+            except Exception as e:
                 logger.error(f"Upload task error: {e}")
-                    return {'success': False, 'error': str(e)}
-            
+                return {'success': False, 'error': str(e)}
+        
         # Submit upload task
-            future = self.upload_executor.submit(upload_task)
-            self.upload_futures.append(future)
-            
+        future = self.upload_executor.submit(upload_task)
+        self.upload_futures.append(future)
+        
         # Close windows immediately
         if self.options_window:
             self.options_window.destroy()
@@ -929,11 +929,11 @@ def run_app():
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt")
         if 'app' in locals():
-        app.quit_app()
+            app.quit_app()
     except Exception as e:
         logger.error(f"Error in main loop: {e}")
         if 'app' in locals():
-        app.quit_app()
+            app.quit_app()
 
 if __name__ == "__main__":
-    run_app() 
+    run_app()
