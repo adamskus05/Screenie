@@ -569,13 +569,43 @@ class ScreenshotApp:
                 # Get current date for folder name
                 today = datetime.now().strftime('%Y-%m-%d')
                 
+                # Ensure headers are set correctly for upload
+                headers = {
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Origin': 'app://screenie',
+                    'Referer': 'https://screenie.space/',
+                    'Sec-Fetch-Site': 'same-origin',
+                    'Sec-Fetch-Mode': 'cors',
+                    'Sec-Fetch-Dest': 'empty'
+                }
+                
                 # Upload with retry logic
                 for attempt in range(self.config["upload"]["max_retries"]):
                     try:
+                        # Check if we need to re-authenticate
+                        auth_check = self.session.get(
+                            f"{self.config['server']['url']}/check-auth",
+                            headers=headers
+                        )
+                        
+                        if not auth_check.json().get('authenticated'):
+                            logger.warning("Session expired, attempting to re-authenticate")
+                            # Try to re-authenticate using stored credentials
+                            creds_file = os.path.join(os.path.expanduser('~'), '.screenie_user_credentials')
+                            if os.path.exists(creds_file):
+                                with open(creds_file, 'r') as f:
+                                    creds = json.load(f)
+                                    if not self.authenticate(creds['username'], creds['password']):
+                                        return {'success': False, 'error': 'Session expired and re-authentication failed'}
+                            else:
+                                return {'success': False, 'error': 'Session expired and no stored credentials found'}
+                        
                         response = self.session.post(
                             url,
                             files=files,
                             data={'folder': today},
+                            headers=headers,
                             timeout=self.config["upload"]["timeout"]
                         )
                         
@@ -585,6 +615,9 @@ class ScreenshotApp:
                                 'success': True,
                                 'url': f"{self.config['server']['url']}{data['path']}"
                             }
+                        elif response.status_code == 401:
+                            logger.error("Upload failed due to authentication error")
+                            return {'success': False, 'error': 'Authentication error'}
                         else:
                             logger.error(f"Upload failed with status {response.status_code}")
                             
@@ -795,7 +828,8 @@ class ScreenshotApp:
             # First make a GET request to get any necessary cookies
             try:
                 logger.info("Making initial GET request to /")
-                self.session.get(f"{self.config['server']['url']}/")
+                initial_response = self.session.get(f"{self.config['server']['url']}/")
+                logger.info(f"Initial cookies: {dict(initial_response.cookies)}")
             except Exception as e:
                 logger.warning(f"Initial GET request failed: {e}")
             
@@ -803,35 +837,23 @@ class ScreenshotApp:
             url = f"{self.config['server']['url']}/login"
             logger.info("Making login request to: %s", url)
             
-            # Format credentials exactly as the web form
+            # Use the username exactly as provided
             login_data = {
-                "username": "operator_1337",  # Try lowercase version
-                "password": password,
-                "_permanent": True
+                "username": username,
+                "password": password
             }
             
             # Log non-sensitive debug info
             logger.debug(f"Request payload size: {len(str(login_data))} bytes")
-            logger.info(f"Sending login request for user: {login_data['username']}")
+            logger.info(f"Sending login request for user: {username}")
             
-            # Make the login request with form data
+            # Make the login request
             response = self.session.post(
                 url,
                 json=login_data,
                 timeout=self.config["upload"]["timeout"],
                 allow_redirects=True
             )
-            
-            # If first attempt fails, try with uppercase
-            if response.status_code == 401:
-                logger.info("First attempt failed, trying with uppercase username")
-                login_data["username"] = "OPERATOR_1337"
-                response = self.session.post(
-                    url,
-                    json=login_data,
-                    timeout=self.config["upload"]["timeout"],
-                    allow_redirects=True
-                )
             
             logger.info(f"Login response status: {response.status_code}")
             logger.info(f"Response headers: {dict(response.headers)}")
@@ -847,8 +869,11 @@ class ScreenshotApp:
                 response_data = {}
             
             if response.status_code == 200:
-                # Store cookies
-                self.save_auth_cookies(dict(response.cookies))
+                # Store cookies from both initial request and login response
+                all_cookies = {}
+                all_cookies.update(dict(initial_response.cookies))
+                all_cookies.update(dict(response.cookies))
+                self.save_auth_cookies(all_cookies)
                 logger.info("Authentication successful")
                 
                 # Verify the session is working
