@@ -274,7 +274,7 @@ def register():
     """Handle user registration requests."""
     try:
         data = request.json
-        username = data.get('username', '').strip()
+        username = data.get('username', '').strip()  # Keep original case for storage
         password = data.get('password', '')
         email = data.get('email', '').strip()
         
@@ -297,13 +297,13 @@ def register():
         with get_db() as conn:
             cursor = conn.cursor()
             
-            # Check if username exists
-            cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+            # Check if username exists (case-insensitive)
+            cursor.execute('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', (username,))
             if cursor.fetchone():
                 return jsonify({'error': 'Username already exists'}), 400
             
-            # Check if registration request exists
-            cursor.execute('SELECT id FROM registration_requests WHERE username = ?', (username,))
+            # Check if registration request exists (case-insensitive)
+            cursor.execute('SELECT id FROM registration_requests WHERE LOWER(username) = LOWER(?)', (username,))
             if cursor.fetchone():
                 return jsonify({'error': 'Registration request already pending'}), 400
             
@@ -311,7 +311,7 @@ def register():
             password_hash = generate_password_hash(password)
             cursor.execute(
                 'INSERT INTO registration_requests (username, password_hash, email) VALUES (?, ?, ?)',
-                (username, password_hash, email)
+                (username, password_hash, email)  # Store username with original case
             )
             
             log_audit(None, 'REGISTRATION_REQUEST', f'New registration request for username: {username}', request.remote_addr)
@@ -335,16 +335,25 @@ def login():
             record_failed_attempt(client_ip)
             return jsonify({'error': 'Invalid credentials'}), 401
         
+        app.logger.debug(f"Login attempt - username: {username}")
+        
         with get_db() as conn:
             cursor = conn.cursor()
-            # Use LOWER() in SQL query to match case-insensitively
-            cursor.execute('SELECT id, password_hash, is_approved, status FROM users WHERE LOWER(username) = ?', (username,))
+            # Debug: Check existing usernames
+            cursor.execute('SELECT username FROM users')
+            existing_users = [row[0] for row in cursor.fetchall()]
+            app.logger.debug(f"Existing usernames in DB: {existing_users}")
+            
+            # Use case-insensitive comparison
+            cursor.execute('SELECT id, password_hash, is_approved, status, username FROM users WHERE LOWER(username) = LOWER(?)', (username,))
             user = cursor.fetchone()
             
             if not user:
                 app.logger.warning(f"Login attempt for non-existent user: {username}")
                 record_failed_attempt(client_ip)
                 return jsonify({'error': 'Invalid credentials'}), 401
+            
+            app.logger.debug(f"Found user: {user[4]} (ID: {user[0]})")
             
             if not check_password_hash(user[1], password):
                 app.logger.warning(f"Invalid password for user: {username}")
