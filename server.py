@@ -33,15 +33,17 @@ ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*').split(',')
 
 # Set up paths
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.environ.get('DATA_DIR', os.path.join(BASE_DIR, 'data'))
+DATA_DIR = os.environ.get('DATA_DIR', '/opt/render/project/data')  # Changed to use Render's persistent disk
 UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
 DB_FILE = os.path.join(DATA_DIR, 'users.db')
 LOG_FILE = os.path.join(DATA_DIR, 'access.log')
 SCHEMA_FILE = os.path.join(BASE_DIR, 'schema.sql')
 
-# Ensure directories exist
+# Ensure directories exist with proper permissions
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.chmod(DATA_DIR, 0o755)  # Add proper permissions
+os.chmod(UPLOAD_FOLDER, 0o755)  # Add proper permissions
 
 # Force HTTPS
 app.config['SESSION_COOKIE_SECURE'] = True
@@ -50,9 +52,15 @@ app.config['DEBUG'] = False  # Disable debug mode in production
 
 # Set session configuration
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'  # Changed from Lax to Strict
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
-app.secret_key = SECRET_KEY or secrets.token_hex(32)  # Use environment variable or default
+app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Increased from 24 hours to 7 days
+app.config['SESSION_FILE_DIR'] = os.path.join(DATA_DIR, 'sessions')  # Store sessions in persistent storage
+app.config['SESSION_TYPE'] = 'filesystem'
+app.secret_key = SECRET_KEY or secrets.token_hex(32)
+
+# Ensure session directory exists with proper permissions
+os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+os.chmod(app.config['SESSION_FILE_DIR'], 0o755)
 
 # Enable CORS with secure settings
 CORS(app, 
@@ -611,40 +619,52 @@ def create_folder():
         if not os.path.exists(user_base_folder):
             app.logger.info(f"Creating user base folder: {user_base_folder}")
             os.makedirs(user_base_folder)
+            os.chmod(user_base_folder, 0o755)  # Set proper permissions
         
         # Check if folder already exists
         if os.path.exists(folder_path):
             app.logger.error(f"Folder already exists: {folder_path}")
-            return jsonify({'error': 'Folder already exists'}), 400
+            return jsonify({'error': 'A folder with this name already exists'}), 400
         
         # Create the folder with proper permissions
         try:
             os.makedirs(folder_path)
             os.chmod(folder_path, 0o755)  # Set proper permissions
             app.logger.info(f"Successfully created folder: {folder_path}")
+            
+            # Save folder metadata
+            metadata = load_folder_metadata(session['user_id'])
+            metadata.setdefault('folders', {})
+            metadata['folders'][name] = {
+                'display_name': display_name,
+                'created': datetime.now().isoformat(),
+                'is_starred': False
+            }
+            save_folder_metadata(session['user_id'], metadata)
+            
+            log_audit(session['user_id'], 'CREATE_FOLDER', f'Created folder: {name}', request.remote_addr)
+            
+            return jsonify({
+                'success': True,
+                'folder': {
+                    'name': name,
+                    'display_name': display_name,
+                    'path': f'user_{session["user_id"]}/{name}',
+                    'created': datetime.now().isoformat(),
+                    'modified': datetime.now().isoformat(),
+                    'is_permanent': False,
+                    'is_starred': False,
+                    'screenshots': []
+                }
+            })
+            
         except OSError as e:
             app.logger.error(f"Failed to create folder {folder_path}: {str(e)}")
-            return jsonify({'error': 'Failed to create folder due to permissions'}), 500
-        
-        log_audit(session['user_id'], 'CREATE_FOLDER', f'Created folder: {name}', request.remote_addr)
-        
-        return jsonify({
-            'success': True,
-            'folder': {
-                'name': name,
-                'display_name': display_name,
-                'path': f'user_{session["user_id"]}/{name}',
-                'created': datetime.now().isoformat(),
-                'modified': datetime.now().isoformat(),
-                'is_permanent': False,
-                'is_starred': False,
-                'screenshots': []
-            }
-        })
+            return jsonify({'error': 'Failed to create folder. Please check folder name and try again.'}), 500
         
     except Exception as e:
         app.logger.error(f"Error creating folder: {str(e)}")
-        return jsonify({'error': 'Failed to create folder'}), 500
+        return jsonify({'error': 'An unexpected error occurred. Please try again.'}), 500
 
 def get_folder_screenshots(folder_path):
     """Get list of screenshots in a folder."""
