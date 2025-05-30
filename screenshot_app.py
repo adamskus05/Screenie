@@ -763,7 +763,8 @@ class ScreenshotApp:
             self.session.headers.update({
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Origin': 'app://screenie'
+                'Origin': 'app://screenie',
+                'User-Agent': 'Screenie Desktop Client/1.0'
             })
             
             # Attempt login
@@ -784,7 +785,10 @@ class ScreenshotApp:
                 
                 # Verify the session is working
                 check_auth_url = f"{self.config['server']['url']}/check-auth"
-                auth_check = self.session.get(check_auth_url)
+                auth_check = self.session.get(
+                    check_auth_url,
+                    headers={'Origin': 'app://screenie'}
+                )
                 logger.info(f"Auth check response: {auth_check.status_code}")
                 if auth_check.status_code == 200:
                     auth_data = auth_check.json()

@@ -81,10 +81,11 @@ CORS(app,
          r"/*": {
              "origins": ["http://localhost:5000", "https://localhost:5000", "http://127.0.0.1:5000", "https://127.0.0.1:5000", "https://screenie.space", "app://screenie", *ALLOWED_ORIGINS],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization", "Origin"],
+             "allow_headers": ["Content-Type", "Authorization", "Origin", "User-Agent"],
              "expose_headers": ["Content-Type", "Set-Cookie"],
              "supports_credentials": True,
-             "allow_credentials": True
+             "allow_credentials": True,
+             "max_age": 3600
          }
      })
 
@@ -366,13 +367,20 @@ def login():
             cursor.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (user[0],))
             conn.commit()
             
+            # Set secure cookie for desktop app
+            response = jsonify({
+                'success': True,
+                'user_id': user[0]
+            })
+            
+            # Set SameSite=None and Secure for desktop app
+            if request.headers.get('Origin') == 'app://screenie':
+                response.headers['Set-Cookie'] = f'session={session.sid}; SameSite=None; Secure; Path=/'
+            
             log_audit(user[0], 'LOGIN', 'Successful login', client_ip)
             app.logger.info(f"Successful login for user: {username}")
             
-            return jsonify({
-                'success': True,
-                'user_id': user[0]
-            }), 200
+            return response
     
     except Exception as e:
         app.logger.error(f"Login error: {str(e)}")
@@ -1516,7 +1524,7 @@ def add_security_headers(response):
     if origin in ["app://screenie", "https://screenie.space"] or origin.startswith("http://localhost:") or origin.startswith("https://localhost:"):
         response.headers['Access-Control-Allow-Origin'] = origin
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Origin'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Origin, User-Agent'
         response.headers['Access-Control-Allow-Credentials'] = 'true'
         response.headers['Access-Control-Expose-Headers'] = 'Set-Cookie'
         response.headers['Access-Control-Max-Age'] = '3600'
