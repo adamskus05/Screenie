@@ -200,83 +200,83 @@ class ScreenshotApp:
         try:
             logger.info("Creating system tray icon...")
             
-            # Create a new image with a transparent background
-            width = 64
-            height = 64
-            image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-            draw = ImageDraw.Draw(image)
-            
-            # Draw the poop emoji (💩)
+        # Create a new image with a transparent background
+        width = 64
+        height = 64
+        image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        
+        # Draw the poop emoji (💩)
             font_size = 48
             font = None
             
-            try:
-                from PIL import ImageFont
-                if sys.platform == 'win32':
+        try:
+            from PIL import ImageFont
+            if sys.platform == 'win32':
                     font = ImageFont.truetype('seguiemj.ttf', font_size)
-                elif sys.platform == 'darwin':
+            elif sys.platform == 'darwin':
                     font = ImageFont.truetype('Apple Color Emoji.ttc', font_size)
-                else:
+            else:
                     font = ImageFont.truetype('NotoColorEmoji.ttf', font_size)
             except Exception as e:
                 logger.warning(f"Failed to load emoji font: {e}")
-                font = None
+            font = None
 
-            # Calculate text position to center it
-            emoji = "💩"
-            if font:
-                text_bbox = draw.textbbox((0, 0), emoji, font=font)
-                text_width = text_bbox[2] - text_bbox[0]
-                text_height = text_bbox[3] - text_bbox[1]
-            else:
-                text_width = font_size
-                text_height = font_size
-            
-            x = (width - text_width) // 2
-            y = (height - text_height) // 2
-            
+        # Calculate text position to center it
+        emoji = "💩"
+        if font:
+            text_bbox = draw.textbbox((0, 0), emoji, font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+        else:
+            text_width = font_size
+            text_height = font_size
+        
+        x = (width - text_width) // 2
+        y = (height - text_height) // 2
+        
             # Draw the emoji
             draw.text((x, y), emoji, font=font, fill='black')
-            
+
             # Create system tray menu
-            menu = Menu(
-                MenuItem('Take Screenshot', lambda: self.screenshot_queue.put('take_screenshot')),
+        menu = Menu(
+            MenuItem('Take Screenshot', lambda: self.screenshot_queue.put('take_screenshot')),
                 MenuItem('Exit', lambda: self.quit_app())
             )
             
             # Create and run system tray icon
             self.icon = Icon('Screenie', image, 'Screenie', menu)
-            threading.Thread(target=self.icon.run, daemon=True).start()
+        threading.Thread(target=self.icon.run, daemon=True).start()
             
             logger.info("System tray icon created successfully")
             
         except Exception as e:
             logger.error(f"Failed to create system tray icon: {e}")
             messagebox.showerror("Error", "Failed to create system tray icon. The application may not work correctly.")
-
+    
     def quit_app(self):
         """Safely quit the application."""
         try:
             logger.info("Quitting application...")
-            self.running = False
+        self.running = False
             
             # Stop keyboard listener
-            if hasattr(self, 'keyboard_listener'):
-                self.keyboard_listener.stop()
+        if hasattr(self, 'keyboard_listener'):
+            self.keyboard_listener.stop()
             
             # Stop system tray icon
             if self.icon:
                 self.icon.stop()
             
             # Clean up executor
-            if hasattr(self, 'upload_executor'):
-                self.upload_executor.shutdown(wait=False)
+        if hasattr(self, 'upload_executor'):
+            self.upload_executor.shutdown(wait=False)
             
             # Destroy any remaining windows
-            if self.select_window:
-                self.select_window.destroy()
-            if self.options_window:
-                self.options_window.destroy()
+        if self.select_window:
+            self.select_window.destroy()
+        if self.options_window:
+            self.options_window.destroy()
             
             # Quit the main window
             self.root.quit()
@@ -337,8 +337,8 @@ class ScreenshotApp:
             # Create canvas
             self.canvas = tk.Canvas(
                 self.select_window,
-                cursor="cross",
-                highlightthickness=0,
+                                  cursor="cross",
+                                  highlightthickness=0,
                 bg='grey'
             )
             self.canvas.pack(fill=tk.BOTH, expand=True)
@@ -555,9 +555,9 @@ class ScreenshotApp:
         if not self.screenshot:
             return
 
-        def upload_task():
-            try:
-                # Optimize image
+            def upload_task():
+                try:
+                    # Optimize image
                 img_byte_arr = BytesIO()
                 self.current_screenshot.save(img_byte_arr, format='PNG')
                 img_byte_arr = img_byte_arr.getvalue()
@@ -567,14 +567,14 @@ class ScreenshotApp:
                 files = {'file': ('screenshot.png', img_byte_arr, 'image/png')}
                 
                 # Get current date for folder name
-                today = datetime.now().strftime('%Y-%m-%d')
-                
+                            today = datetime.now().strftime('%Y-%m-%d')
+                            
                 # Upload with retry logic
                 for attempt in range(self.config["upload"]["max_retries"]):
                     try:
-                        response = self.session.post(
+                            response = self.session.post(
                             url,
-                            files=files,
+                                files=files,
                             data={'folder': today},
                             timeout=self.config["upload"]["timeout"]
                         )
@@ -597,14 +597,14 @@ class ScreenshotApp:
                 
                 return {'success': False, 'error': 'Upload failed after retries'}
                 
-            except Exception as e:
+                except Exception as e:
                 logger.error(f"Upload task error: {e}")
-                return {'success': False, 'error': str(e)}
-
+                    return {'success': False, 'error': str(e)}
+            
         # Submit upload task
-        future = self.upload_executor.submit(upload_task)
-        self.upload_futures.append(future)
-        
+            future = self.upload_executor.submit(upload_task)
+            self.upload_futures.append(future)
+            
         # Close windows immediately
         if self.options_window:
             self.options_window.destroy()
@@ -757,87 +757,52 @@ class ScreenshotApp:
         try:
             logger.info(f"Attempting to authenticate with server: {self.config['server']['url']}")
             
-            # First, try to check if we're already authenticated
-            check_auth_url = f"{self.config['server']['url']}/check-auth"
-            logger.info(f"Checking current auth status at: {check_auth_url}")
-            check_response = self.session.get(
-                check_auth_url,
-                timeout=self.config["upload"]["timeout"],
-                verify=self.config["server"]["verify_ssl"]
-            )
-            logger.info(f"Auth check response status: {check_response.status_code}")
+            # Create a new session
+            self.session = requests.Session()
+            self.session.verify = self.config["server"]["verify_ssl"]
             
-            if check_response.status_code == 200 and check_response.json().get('authenticated'):
-                logger.info("Already authenticated")
-                return True
-            
-            # If not authenticated, try to login
+            # Attempt login
             url = f"{self.config['server']['url']}/login"
-            logger.info(f"Attempting login at: {url}")
-            
-            # Log request details (excluding password)
             headers = {
                 'Content-Type': 'application/json',
-                'Origin': self.config['server']['url']
+                'Accept': 'application/json'
             }
-            logger.info(f"Request headers: {headers}")
             
             response = self.session.post(
                 url,
                 json={"username": username, "password": password},
-                timeout=self.config["upload"]["timeout"],
-                verify=self.config["server"]["verify_ssl"],
-                headers=headers
+                headers=headers,
+                timeout=self.config["upload"]["timeout"]
             )
             
             logger.info(f"Login response status: {response.status_code}")
-            logger.info(f"Login response headers: {dict(response.headers)}")
             
             if response.status_code == 200:
-                # Save cookies to session
-                self.session.cookies.update(response.cookies)
-                
-                # Save cookies to disk for persistence
-                cookie_dict = {cookie.name: cookie.value for cookie in response.cookies}
-                logger.info(f"Received cookies: {cookie_dict}")
-                self.save_auth_cookies(cookie_dict)
-                
-                # Verify authentication was successful
-                logger.info("Verifying authentication...")
-                verify_response = self.session.get(
-                    check_auth_url,
-                    timeout=self.config["upload"]["timeout"],
-                    verify=self.config["server"]["verify_ssl"],
-                    headers={'Origin': self.config['server']['url']}
-                )
-                
-                logger.info(f"Verify response status: {verify_response.status_code}")
-                if verify_response.status_code == 200:
-                    verify_data = verify_response.json()
-                    logger.info(f"Verify response data: {verify_data}")
-                
-                if verify_response.status_code == 200 and verify_response.json().get('authenticated'):
-                    logger.info("Authentication successful")
-                    return True
-                else:
-                    logger.error("Authentication verification failed")
-                    return False
-            else:
-                try:
-                    error_data = response.json()
-                    error_message = error_data.get('error', 'Unknown error')
-                    logger.error(f"Authentication failed: {error_message}")
-                    logger.error(f"Full error response: {error_data}")
-                except Exception as e:
-                    logger.error(f"Failed to parse error response: {e}")
-                    logger.error(f"Raw response content: {response.text}")
-                return False
-                
+                # Store cookies
+                self.save_auth_cookies(dict(response.cookies))
+                logger.info("Authentication successful")
+                return True
+            
+            # Handle error responses
+            error_message = "Unknown error"
+            try:
+                error_data = response.json()
+                error_message = error_data.get('error', 'Unknown error')
+            except Exception as e:
+                logger.error(f"Failed to parse error response: {e}")
+                logger.error(f"Raw response content: {response.text}")
+            
+            logger.error(f"Authentication failed: {error_message}")
+            return False
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error during authentication: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Authentication error: {e}")
+            logger.error(f"Unexpected error during authentication: {e}")
             logger.exception("Full authentication error traceback:")
             return False
-
+    
     def get_auth_cookies(self):
         """Get authentication cookies from the session."""
         return dict(self.session.cookies)
@@ -964,11 +929,11 @@ def run_app():
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt")
         if 'app' in locals():
-            app.quit_app()
+        app.quit_app()
     except Exception as e:
         logger.error(f"Error in main loop: {e}")
         if 'app' in locals():
-            app.quit_app()
+        app.quit_app()
 
 if __name__ == "__main__":
     run_app() 

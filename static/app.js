@@ -292,23 +292,23 @@ function displayFolders(folders) {
     const fragment = document.createDocumentFragment();
 
     if (Array.isArray(folders)) {
-        // Sort folders: permanent first, then starred, then alphabetically
-        folders.sort((a, b) => {
+    // Sort folders: permanent first, then starred, then alphabetically
+    folders.sort((a, b) => {
             if (a.name === 'all') return -1;  // "All Screenshots" always first
             if (b.name === 'all') return 1;
-            if (a.is_permanent && !b.is_permanent) return -1;
-            if (!a.is_permanent && b.is_permanent) return 1;
-            if (a.is_starred && !b.is_starred) return -1;
-            if (!a.is_starred && b.is_starred) return 1;
-            return (a.display_name || a.name).localeCompare(b.display_name || b.name);
-        });
+        if (a.is_permanent && !b.is_permanent) return -1;
+        if (!a.is_permanent && b.is_permanent) return 1;
+        if (a.is_starred && !b.is_starred) return -1;
+        if (!a.is_starred && b.is_starred) return 1;
+        return (a.display_name || a.name).localeCompare(b.display_name || b.name);
+    });
 
-        folders.forEach(folder => {
-            const folderName = folder.display_name || folder.name;
+    folders.forEach(folder => {
+        const folderName = folder.display_name || folder.name;
             folderTemplate.innerHTML = `
                 <div class="folder-item ${
                     currentFolder?.name === folder.name ? 'active' : ''
-                } ${folder.is_starred || folder.is_permanent ? 'starred' : ''
+        } ${folder.is_starred || folder.is_permanent ? 'starred' : ''
                 } ${folder.is_permanent ? 'permanent' : ''}"
                      data-folder-name="${folder.name}">
                     <div class="folder-icon">📁</div>
@@ -319,10 +319,10 @@ function displayFolders(folders) {
                           folder.is_starred ? 
                           '<span class="regular-star">★</span>' : 
                           ''}
-                    </div>
                 </div>
-            `;
-            
+            </div>
+        `;
+        
             const folderItem = /** @type {HTMLElement} */ (folderTemplate.content.firstElementChild?.cloneNode(true));
             if (!folderItem) return;
 
@@ -726,7 +726,7 @@ async function createFolder() {
             modal.classList.add('hidden');
         }
         
-        showNotification('Folder created successfully');
+            showNotification('Folder created successfully');
         
         // Refresh the folders list
         const folders = await loadFolders(true);

@@ -60,9 +60,11 @@ app.config['DEBUG'] = False  # Disable debug mode in production
 # Set session configuration
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = None  # Allow cross-site cookies for the desktop app
+app.config['SESSION_COOKIE_PATH'] = '/'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Increased from 24 hours to 7 days
 app.config['SESSION_FILE_DIR'] = os.path.join(DATA_DIR, 'sessions')
 app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow cookies to work across subdomains
 app.secret_key = SECRET_KEY or secrets.token_hex(32)
 
 # Ensure session directory exists with proper permissions
@@ -335,7 +337,13 @@ def login():
             cursor.execute('SELECT id, password_hash, is_approved, status FROM users WHERE username = ?', (username,))
             user = cursor.fetchone()
             
-            if not user or not check_password_hash(user[1], password):
+            if not user:
+                app.logger.warning(f"Login attempt for non-existent user: {username}")
+                record_failed_attempt(client_ip)
+                return jsonify({'error': 'Invalid credentials'}), 401
+                
+            if not check_password_hash(user[1], password):
+                app.logger.warning(f"Invalid password for user: {username}")
                 record_failed_attempt(client_ip)
                 return jsonify({'error': 'Invalid credentials'}), 401
             
@@ -349,6 +357,8 @@ def login():
             if client_ip in failed_attempts:
                 del failed_attempts[client_ip]
             
+            # Set session data
+            session.clear()  # Clear any existing session data
             session['user_id'] = user[0]
             session.permanent = True
             
@@ -357,8 +367,12 @@ def login():
             conn.commit()
             
             log_audit(user[0], 'LOGIN', 'Successful login', client_ip)
+            app.logger.info(f"Successful login for user: {username}")
             
-            return jsonify({'success': True}), 200
+            return jsonify({
+                'success': True,
+                'user_id': user[0]
+            }), 200
     
     except Exception as e:
         app.logger.error(f"Login error: {str(e)}")
@@ -1205,7 +1219,16 @@ def logout():
 @app.route('/check-auth')
 def check_auth():
     """Check if user is authenticated."""
-    return jsonify({'authenticated': 'user_id' in session})
+    try:
+        is_authenticated = 'user_id' in session
+        app.logger.debug(f"Auth check - Session: {dict(session)}, Authenticated: {is_authenticated}")
+        return jsonify({
+            'authenticated': is_authenticated,
+            'user_id': session.get('user_id') if is_authenticated else None
+        })
+    except Exception as e:
+        app.logger.error(f"Auth check error: {str(e)}")
+        return jsonify({'authenticated': False})
 
 @app.route('/delete/<folder_name>/<filename>', methods=['DELETE'])
 @requires_auth
@@ -1489,7 +1512,8 @@ def reject_registration_request(request_id):
 def add_security_headers(response):
     """Add security headers to all responses."""
     # Allow requests from desktop app
-    response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+    origin = request.headers.get('Origin', '*')
+    response.headers['Access-Control-Allow-Origin'] = origin
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
@@ -1504,6 +1528,10 @@ def add_security_headers(response):
         "font-src * data:; "
         "connect-src *"
     )
+    
+    # Set cookie security headers
+    if 'Set-Cookie' in response.headers:
+        response.headers['Set-Cookie'] += '; SameSite=None; Secure'
     
     return response
 
