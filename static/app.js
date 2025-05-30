@@ -719,8 +719,12 @@ async function createFolder() {
             throw new Error(result.error || 'Failed to create folder');
         }
 
-        // Close the modal first
-        closeModal();
+        // Close the modal immediately after successful creation
+        const modal = document.getElementById('modal');
+        if (modal) {
+            modal.innerHTML = '';
+            modal.classList.add('hidden');
+        }
         
         showNotification('Folder created successfully');
         

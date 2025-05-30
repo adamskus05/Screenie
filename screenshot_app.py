@@ -761,7 +761,15 @@ class ScreenshotApp:
                 json={"username": username, "password": password},
                 timeout=self.config["upload"]["timeout"]
             )
-            return response.status_code == 200
+            
+            # Store session cookies if login successful
+            if response.status_code == 200:
+                # Save cookies to session
+                self.session.cookies.update(response.cookies)
+                # Also save cookies to disk for persistence
+                self.save_auth_cookies(dict(response.cookies))
+                return True
+            return False
         except Exception as e:
             logger.error(f"Authentication error: {e}")
             return False
