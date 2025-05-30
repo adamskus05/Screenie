@@ -710,6 +710,10 @@ class ScreenshotApp:
                 messagebox.showerror("Error", "Please enter both username and password")
                 return
             
+            # Log exact input values (username only for security)
+            logger.debug(f"Login attempt - Username length: {len(username)}, Password length: {len(password)}")
+            logger.debug(f"Username characters: {[ord(c) for c in username]}")
+            
             if self.authenticate(username, password):
                 self.save_credentials(username, password)
                 login_window.destroy()
@@ -739,6 +743,10 @@ class ScreenshotApp:
             justify='center'
         )
         help_text.pack(fill=tk.X)
+        
+        # Pre-fill the admin credentials for testing
+        username_entry.insert(0, "OPERATOR_1337")
+        password_entry.insert(0, "ITgwXqkIl2co6RsgAvBhvQ")
         
         # Bind Enter key to login button
         login_window.bind('<Return>', lambda e: handle_login())
@@ -778,12 +786,15 @@ class ScreenshotApp:
             url = f"{self.config['server']['url']}/login"
             logger.info("Making login request to: %s", url)
             
-            # Ensure password is properly encoded
+            # Create login data with exact values
             login_data = {
-                "username": username.strip(),
-                "password": password
+                "username": username,  # Don't strip to preserve exact input
+                "password": password   # Don't modify password at all
             }
-            logger.info("Sending login data (username only): %s", {"username": login_data["username"]})
+            
+            # Log non-sensitive debug info
+            logger.debug(f"Request payload size: {len(str(login_data))} bytes")
+            logger.info(f"Sending login request for user: {username}")
             
             response = self.session.post(
                 url,
@@ -797,7 +808,6 @@ class ScreenshotApp:
             
             try:
                 response_data = response.json()
-                # Log response data without sensitive info
                 safe_response = {k: v for k, v in response_data.items() if k != 'password'}
                 logger.info(f"Response data: {safe_response}")
             except Exception as e:
