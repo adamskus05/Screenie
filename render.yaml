@@ -2,10 +2,13 @@ services:
   - type: web
     name: screenie
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: |
-      echo -e "$ADMIN_USERNAME\n$ADMIN_PASSWORD\n$ADMIN_PASSWORD\n$ADMIN_EMAIL" | python create_admin.py
-      gunicorn --bind 0.0.0.0:$PORT server:app
+    buildCommand: |
+      pip install -r requirements.txt
+      python create_admin.py <<< "$ADMIN_USERNAME
+      $ADMIN_PASSWORD
+      $ADMIN_PASSWORD
+      $ADMIN_EMAIL"
+    startCommand: gunicorn --bind 0.0.0.0:$PORT server:app
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -22,4 +25,4 @@ services:
       - key: ADMIN_PASSWORD
         sync: false
       - key: ADMIN_EMAIL
-        sync: false 
+        sync: false
