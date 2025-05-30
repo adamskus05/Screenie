@@ -121,10 +121,23 @@ def init_db():
         # Ensure the database directory exists
         os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
         
-        # If database exists and has data, skip initialization
-        if os.path.exists(DB_FILE) and os.path.getsize(DB_FILE) > 0:
-            app.logger.info("Database exists and has data, skipping initialization")
-            return
+        # Check if database exists and has tables
+        if os.path.exists(DB_FILE):
+            try:
+                with sqlite3.connect(DB_FILE) as conn:
+                    cursor = conn.cursor()
+                    # Check if users table exists and has data
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+                    if cursor.fetchone() is not None:
+                        cursor.execute('SELECT COUNT(*) FROM users')
+                        if cursor.fetchone()[0] > 0:
+                            app.logger.info("Database exists and has users, skipping initialization")
+                            return
+            except sqlite3.Error as e:
+                app.logger.error(f"Error checking database: {e}")
+                # If there's an error, assume database is corrupted and recreate it
+                os.remove(DB_FILE)
+                app.logger.warning("Removed corrupted database file")
 
         app.logger.info("Initializing empty database...")
         with sqlite3.connect(DB_FILE) as conn:

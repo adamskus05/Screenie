@@ -241,20 +241,7 @@ function setupEventListeners() {
     const starFolderBtn = document.getElementById('starFolderBtn');
 
     if (newFolderBtn) {
-        newFolderBtn.addEventListener('click', () => {
-            showModal('Create New Folder', `
-                <div class="space-y-4">
-                    <div class="mb-4">
-                        <label class="block mb-2">Folder Name:</label>
-                        <input type="text" id="newFolderName" class="w-full px-2 py-1 border border-gray-400 bg-white focus:border-blue-500">
-                    </div>
-                    <div class="flex justify-end space-x-2">
-                        <button onclick="closeModal()" class="btn">Cancel</button>
-                        <button onclick="createFolder()" class="btn btn-primary">Create</button>
-                    </div>
-                </div>
-            `);
-        });
+        newFolderBtn.addEventListener('click', showNewFolderModal);
     }
 
     // Logout button
@@ -668,6 +655,46 @@ function viewScreenshot(path, name, date) {
     modal.classList.add('show');
 }
 
+// Display a specific folder
+async function displayFolder(folder) {
+    if (!folder) return;
+    
+    currentFolder = folder;
+    
+    // Update current folder display
+    const currentFolderElement = document.getElementById('currentFolder');
+    if (currentFolderElement) {
+        currentFolderElement.textContent = folder.display_name || folder.name;
+    }
+    
+    // Update folder list selection
+    const folderItems = document.querySelectorAll('.folder-item');
+    folderItems.forEach(item => {
+        const folderItem = /** @type {HTMLElement} */ (item);
+        folderItem.classList.remove('active');
+        if (folderItem.dataset.folder === folder.name) {
+            folderItem.classList.add('active');
+        }
+    });
+    
+    // Display the folder's screenshots
+    const grid = document.getElementById('screenshotGrid');
+    if (grid) {
+        displayScreenshots(folder.screenshots || []);
+    }
+    
+    // Show/hide star button
+    const starFolderBtn = document.getElementById('starFolderBtn');
+    if (starFolderBtn) {
+        if (folder.name === 'all') {
+            starFolderBtn.classList.add('hidden');
+        } else {
+            starFolderBtn.classList.remove('hidden');
+            starFolderBtn.innerHTML = folder.is_starred ? '★' : '☆';
+        }
+    }
+}
+
 // Create new folder
 async function createFolder() {
     const nameInput = /** @type {HTMLInputElement} */ (document.getElementById('newFolderName'));
@@ -692,24 +719,71 @@ async function createFolder() {
             credentials: 'include'
         });
 
+        const result = await response.json();
         if (!response.ok) {
-            throw new Error('Failed to create folder');
+            throw new Error(result.error || 'Failed to create folder');
         }
 
-        const result = await response.json();
-        if (result.success) {
-            showNotification('Folder created successfully');
-            closeModal();
-            // Refresh the folders list
-            const folders = await loadFolders(true);
-            displayFolders(folders);
-            displayFoldersGrid(folders);
-        } else {
-            showNotification(result.error || 'Failed to create folder', 'error');
+        showNotification('Folder created successfully');
+        closeModal();
+        // Refresh the folders list
+        await loadFolders(true);
+        // Switch to the new folder
+        const folders = await loadFolders(true);
+        const newFolder = folders.find(f => f.name === name);
+        if (newFolder) {
+            displayFolder(newFolder);
         }
     } catch (error) {
         console.error('Error creating folder:', error);
-        showNotification('Failed to create folder', 'error');
+        showNotification(error.message || 'Failed to create folder', 'error');
+    }
+}
+
+// Show modal for new folder
+function showNewFolderModal() {
+    const modalContent = `
+        <div class="modal-content" style="width: 300px;">
+            <div class="modal-title">
+                <span>Create New Folder</span>
+                <button class="close-modal">×</button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-4">
+                    <label for="newFolderName" class="block mb-2">Folder Name:</label>
+                    <input type="text" id="newFolderName" class="w-full px-2 py-1 border" 
+                           placeholder="Enter folder name">
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button class="btn close-modal">Cancel</button>
+                    <button onclick="createFolder()" class="btn btn-primary">Create</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const modal = document.getElementById('modal');
+    if (modal) {
+        modal.innerHTML = modalContent;
+        modal.classList.remove('hidden');
+
+        // Add event listeners for close buttons
+        const closeButtons = modal.querySelectorAll('.close-modal');
+        closeButtons.forEach(button => {
+            button.addEventListener('click', closeModal);
+        });
+
+        // Focus the input field
+        const input = document.getElementById('newFolderName');
+        if (input) {
+            input.focus();
+            // Handle enter key
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    createFolder();
+                }
+            });
+        }
     }
 }
 
