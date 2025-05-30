@@ -683,15 +683,10 @@ async function displayFolder(folder) {
         displayScreenshots(folder.screenshots || []);
     }
     
-    // Show/hide star button
+    // Always hide the star button - we're not using it anymore
     const starFolderBtn = document.getElementById('starFolderBtn');
     if (starFolderBtn) {
-        if (folder.name === 'all') {
-            starFolderBtn.classList.add('hidden');
-        } else {
-            starFolderBtn.classList.remove('hidden');
-            starFolderBtn.innerHTML = folder.is_starred ? '★' : '☆';
-        }
+        starFolderBtn.classList.add('hidden');
     }
 }
 
@@ -726,20 +721,20 @@ async function createFolder() {
 
         showNotification('Folder created successfully');
         
-        // Close the modal first
-        const modal = document.getElementById('modal');
-        if (modal) {
-            modal.classList.add('hidden');
-            modal.innerHTML = ''; // Clear the modal content
-        }
+        // Close the modal
+        closeModal();
         
         // Refresh the folders list
-        await loadFolders(true);
+        const folders = await loadFolders(true);
         
         // Switch to the new folder
-        const folders = await loadFolders(true);
         const newFolder = folders.find(f => f.name === name);
         if (newFolder) {
+            // Hide the star button since this is a new folder
+            const starFolderBtn = document.getElementById('starFolderBtn');
+            if (starFolderBtn) {
+                starFolderBtn.classList.add('hidden');
+            }
             displayFolder(newFolder);
         }
     } catch (error) {
