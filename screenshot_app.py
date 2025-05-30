@@ -757,31 +757,46 @@ class ScreenshotApp:
         try:
             logger.info(f"Attempting to authenticate with server: {self.config['server']['url']}")
             
-            # Create a new session
+            # Create a new session with proper settings
             self.session = requests.Session()
             self.session.verify = self.config["server"]["verify_ssl"]
+            self.session.headers.update({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Origin': 'app://screenie'
+            })
             
             # Attempt login
             url = f"{self.config['server']['url']}/login"
-            headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-            
             response = self.session.post(
                 url,
                 json={"username": username, "password": password},
-                headers=headers,
                 timeout=self.config["upload"]["timeout"]
             )
             
             logger.info(f"Login response status: {response.status_code}")
+            logger.info(f"Response cookies: {dict(response.cookies)}")
             
             if response.status_code == 200:
                 # Store cookies
                 self.save_auth_cookies(dict(response.cookies))
                 logger.info("Authentication successful")
-                return True
+                
+                # Verify the session is working
+                check_auth_url = f"{self.config['server']['url']}/check-auth"
+                auth_check = self.session.get(check_auth_url)
+                logger.info(f"Auth check response: {auth_check.status_code}")
+                if auth_check.status_code == 200:
+                    auth_data = auth_check.json()
+                    logger.info(f"Auth check data: {auth_data}")
+                    if auth_data.get('authenticated'):
+                        return True
+                    else:
+                        logger.error("Auth check failed after successful login")
+                        return False
+                else:
+                    logger.error(f"Auth check failed with status: {auth_check.status_code}")
+                    return False
             
             # Handle error responses
             error_message = "Unknown error"

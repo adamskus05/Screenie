@@ -59,9 +59,9 @@ app.config['DEBUG'] = False  # Disable debug mode in production
 
 # Set session configuration
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = None  # Allow cross-site cookies for the desktop app
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Required for desktop app
 app.config['SESSION_COOKIE_PATH'] = '/'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Increased from 24 hours to 7 days
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 app.config['SESSION_FILE_DIR'] = os.path.join(DATA_DIR, 'sessions')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow cookies to work across subdomains
@@ -79,10 +79,10 @@ CORS(app,
      supports_credentials=True,
      resources={
          r"/*": {
-             "origins": ["http://localhost:5000", "https://localhost:5000", "http://127.0.0.1:5000", "https://127.0.0.1:5000", "https://screenie.space", *ALLOWED_ORIGINS],
+             "origins": ["http://localhost:5000", "https://localhost:5000", "http://127.0.0.1:5000", "https://127.0.0.1:5000", "https://screenie.space", "app://screenie", *ALLOWED_ORIGINS],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization"],
-             "expose_headers": ["Content-Type"],
+             "allow_headers": ["Content-Type", "Authorization", "Origin"],
+             "expose_headers": ["Content-Type", "Set-Cookie"],
              "supports_credentials": True,
              "allow_credentials": True
          }
@@ -1513,15 +1513,17 @@ def add_security_headers(response):
     """Add security headers to all responses."""
     # Allow requests from desktop app
     origin = request.headers.get('Origin', '*')
-    response.headers['Access-Control-Allow-Origin'] = origin
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
-    response.headers['Access-Control-Max-Age'] = '3600'
+    if origin in ["app://screenie", "https://screenie.space"] or origin.startswith("http://localhost:") or origin.startswith("https://localhost:"):
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Origin'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Expose-Headers'] = 'Set-Cookie'
+        response.headers['Access-Control-Max-Age'] = '3600'
     
-    # Update CSP to be more permissive
+    # Update CSP to be more permissive for desktop app
     response.headers['Content-Security-Policy'] = (
-        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; "
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob: app:; "
         "img-src * data: blob: 'unsafe-inline'; "
         "style-src * 'unsafe-inline'; "
         "script-src * 'unsafe-inline' 'unsafe-eval'; "
