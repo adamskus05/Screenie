@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline';">
+    <title>Access Point</title>
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJESURBVFhH7ZZNSBVRGIbfmTt37h0zNTXDIgqhH4jKVUH0s2gR/UBBq6BFQUFBq6BVRdGiTV" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @font-face {
+            font-family: 'MS Sans Serif';
+            src: local('MS Sans Serif'),
+                 local('Microsoft Sans Serif'),
+                 local('Tahoma');
+            font-display: swap;
+        }
+
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --text-primary: #c8c8c8;
+            --text-error: #ff2222;
+            --accent: #990000;
+            --border: #333333;
+        }
+
+        body {
+            background: var(--bg-primary);
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            color: var(--text-primary);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 50% 50%, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.9) 100%),
+                url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23222222' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.8;
+            z-index: -1;
+        }
+
+        .login-window {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 25px;
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .login-window::before {
+            content: "!WARNING!";
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            padding: 2px 10px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+            opacity: 0.7;
+        }
+
+        .ascii-art {
+            font-family: monospace;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: pre;
+            font-size: 10px;
+            line-height: 1.2;
+            margin-bottom: 15px;
+            opacity: 0.6;
+        }
+
+        .warning-text {
+            text-align: center;
+            color: var(--text-error);
+            font-size: 10px;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: var(--text-primary);
+            opacity: 0.6;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        button {
+            padding: 8px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-family: monospace;
+            font-size: 11px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            opacity: 1;
+            border-color: var(--accent);
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 16px;
+            min-height: 1.5em;
+            font-size: 11px;
+            color: var(--text-primary);
+            opacity: 0.6;
+        }
+
+        .disclaimer {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 8px;
+            color: var(--text-primary);
+            opacity: 0.4;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 12px;
+            background: var(--text-primary);
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 4px;
+            opacity: 0.6;
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 11px;
+            opacity: 0.6;
+            cursor: pointer;
+        }
+
+        .register-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .register-form {
+            display: none;
+        }
+
+        .register-form.active {
+            display: block;
+        }
+
+        .login-form.hidden {
+            display: none;
+        }
+
+        .password-requirements {
+            font-size: 9px;
+            color: var(--text-primary);
+            opacity: 0.6;
+            margin-top: 4px;
+            line-height: 1.2;
+        }
+
+        .back-to-login {
+            font-size: 11px;
+            opacity: 0.6;
+            cursor: pointer;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .back-to-login:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .error-message {
+            color: var(--text-error);
+            font-size: 11px;
+            margin-top: 4px;
+            min-height: 13px;
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            .container {
+                width: 100%;
+                min-height: 100vh;
+                padding: 20px;
+                margin: 0;
+                border-radius: 0;
+            }
+
+            .form-container {
+                width: 100%;
+                padding: 20px;
+            }
+
+            .form-group {
+                margin-bottom: 20px;
+            }
+
+            input[type="text"],
+            input[type="password"],
+            input[type="email"] {
+                width: 100%;
+                padding: 12px;
+                font-size: 16px;
+            }
+
+            button {
+                width: 100%;
+                padding: 12px;
+                font-size: 16px;
+                margin: 10px 0;
+            }
+
+            .toggle-form {
+                width: 100%;
+                margin-top: 20px;
+            }
+
+            .notification {
+                width: 90%;
+                left: 5%;
+                right: 5%;
+                bottom: 20px;
+            }
+        }
+
+        /* Touch-friendly styles */
+        @media (hover: none) {
+            button:hover {
+                transform: none;
+            }
+
+            input[type="text"],
+            input[type="password"],
+            input[type="email"],
+            button {
+                min-height: 44px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-window">
+        <div class="logo">
+            <div class="ascii-art">
+ ██████╗██████╗ ███████╗███████╗███╗   ██╗██╗███████╗
+██╔════╝██╔══██╗██╔════╝██╔════╝████╗  ██║██║██╔════╝
+╚█████╗ ██████╔╝█████╗  █████╗  ██╔██╗ ██║██║█████╗  
+ ╚═══██╗██╔══██╗██╔══╝  ██╔══╝  ██║╚██╗██║██║██╔══╝  
+██████╔╝██║  ██║███████╗███████╗██║ ╚████║██║███████╗
+╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═══╝╚═╝╚══════╝</div>
+        </div>
+        <div class="warning-text">UNAUTHORIZED ACCESS IS PROHIBITED AND MONITORED</div>
+        
+        <div class="login-form">
+            <div class="input-group">
+                <label for="username">identifier:</label>
+                <input type="text" id="username" autocomplete="off" spellcheck="false">
+                <div class="error-message" id="username-error"></div>
+            </div>
+            <div class="input-group">
+                <label for="password">passphrase:</label>
+                <input type="password" id="password">
+                <div class="error-message" id="password-error"></div>
+            </div>
+            <div class="button-group">
+                <button onclick="window.location.href='/'">disconnect</button>
+                <button onclick="authenticate()">proceed</button>
+            </div>
+            <div class="status" id="status">
+                awaiting credentials<span class="cursor"></span>
+            </div>
+            <div class="register-link" onclick="showRegisterForm()">request access</div>
+        </div>
+
+        <div class="register-form">
+            <div class="input-group">
+                <label for="reg-username">desired identifier:</label>
+                <input type="text" id="reg-username" autocomplete="off" spellcheck="false">
+                <div class="error-message" id="reg-username-error"></div>
+            </div>
+            <div class="input-group">
+                <label for="reg-password">desired passphrase:</label>
+                <input type="password" id="reg-password">
+                <div class="password-requirements">
+                    minimum 12 characters, must include: uppercase, lowercase, number, special character
+                </div>
+                <div class="error-message" id="reg-password-error"></div>
+            </div>
+            <div class="input-group">
+                <label for="reg-email">contact protocol (email):</label>
+                <input type="email" id="reg-email" autocomplete="off">
+                <div class="error-message" id="reg-email-error"></div>
+            </div>
+            <div class="button-group">
+                <button onclick="showLoginForm()">cancel</button>
+                <button onclick="register()">submit request</button>
+            </div>
+            <div class="status" id="reg-status">
+                awaiting input<span class="cursor"></span>
+            </div>
+            <div class="back-to-login" onclick="showLoginForm()">return to login</div>
+        </div>
+    </div>
+    
+    <div class="disclaimer">
+        This system is for authorized users only. All actions are logged and monitored.
+        By accessing this system, you consent to security monitoring and auditing.
+    </div>
+
+    <script>
+        let authenticating = false;
+        let registering = false;
+        const API_BASE_URL = window.location.protocol + '//' + window.location.host;
+
+        function showRegisterForm() {
+            document.querySelector('.login-form').classList.add('hidden');
+            document.querySelector('.register-form').classList.add('active');
+        }
+
+        function showLoginForm() {
+            document.querySelector('.login-form').classList.remove('hidden');
+            document.querySelector('.register-form').classList.remove('active');
+        }
+
+        function validatePassword(password) {
+            const minLength = 12;
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            
+            return password.length >= minLength && hasUpper && hasLower && hasNumber && hasSpecial;
+        }
+
+        function validateEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        async function register() {
+            if (registering) return;
+            registering = true;
+
+            const username = document.getElementById('reg-username').value;
+            const password = document.getElementById('reg-password').value;
+            const email = document.getElementById('reg-email').value;
+            const status = document.getElementById('reg-status');
+
+            // Clear previous errors
+            document.getElementById('reg-username-error').textContent = '';
+            document.getElementById('reg-password-error').textContent = '';
+            document.getElementById('reg-email-error').textContent = '';
+
+            // Validate inputs
+            let hasError = false;
+            if (!username || username.length < 3) {
+                document.getElementById('reg-username-error').textContent = 'identifier must be at least 3 characters';
+                hasError = true;
+            }
+            if (!validatePassword(password)) {
+                document.getElementById('reg-password-error').textContent = 'passphrase does not meet requirements';
+                hasError = true;
+            }
+            if (!validateEmail(email)) {
+                document.getElementById('reg-email-error').textContent = 'invalid contact protocol';
+                hasError = true;
+            }
+
+            if (hasError) {
+                registering = false;
+                return;
+            }
+
+            status.innerHTML = 'processing request<span class="cursor"></span>';
+            
+            try {
+                const response = await fetch(API_BASE_URL + '/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password, email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    status.innerHTML = 'request submitted - awaiting approval<span class="cursor"></span>';
+                    setTimeout(() => {
+                        showLoginForm();
+                    }, 3000);
+                } else {
+                    status.innerHTML = data.error || 'request failed<span class="cursor"></span>';
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                status.innerHTML = 'connection failure<span class="cursor"></span>';
+            } finally {
+                registering = false;
+            }
+        }
+
+        async function authenticate() {
+            if (authenticating) return;
+            authenticating = true;
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const status = document.getElementById('status');
+
+            // Clear previous errors
+            document.getElementById('username-error').textContent = '';
+            document.getElementById('password-error').textContent = '';
+
+            status.innerHTML = 'verifying credentials<span class="cursor"></span>';
+            
+            try {
+                const checkAuth = await fetch(API_BASE_URL + '/check-auth', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (checkAuth.ok && (await checkAuth.json()).authenticated) {
+                    status.innerHTML = 'access granted<span class="cursor"></span>';
+                    window.location.href = '/app';
+                    return;
+                }
+
+                const response = await fetch(API_BASE_URL + '/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    status.innerHTML = 'access granted<span class="cursor"></span>';
+                    window.location.href = '/app';
+                } else {
+                    if (data.error === 'PENDING_APPROVAL') {
+                        status.innerHTML = 'account pending approval<span class="cursor"></span>';
+                    } else if (data.error === 'ACCOUNT_DISABLED') {
+                        status.innerHTML = 'account disabled<span class="cursor"></span>';
+                    } else {
+                        status.innerHTML = 'access denied<span class="cursor"></span>';
+                    }
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                status.innerHTML = 'connection failure<span class="cursor"></span>';
+            } finally {
+                authenticating = false;
+            }
+        }
+
+        // Add enter key support
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (document.querySelector('.register-form').classList.contains('active')) {
+                    register();
+                } else {
+                    authenticate();
+                }
+            }
+        });
+    </script>
+    <script src="/lockdown-install.js"></script>
+    <script src="/lockdown-config.js"></script>
+</body>
+</html> 

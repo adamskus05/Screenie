@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: screenie
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: chmod +x startup.sh && ./startup.sh && gunicorn --bind 0.0.0.0:$PORT server:app
+    disk:
+      name: screenie-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://${RENDER_EXTERNAL_URL}
+      - key: UPLOAD_PATH
+        value: /data/uploads
+      - key: DB_PATH
+        value: /data/users.db
+      - key: PORT
+        value: 10000 
