@@ -30,10 +30,17 @@ app = Flask(__name__, static_folder='static', static_url_path='')
 ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
 SECRET_KEY = os.environ.get('SECRET_KEY')
 ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*').split(',')
-DB_PATH = os.environ.get('DB_PATH', 'users.db')
-UPLOAD_PATH = os.environ.get('UPLOAD_PATH', 'uploads')
-SSL_CERT = os.environ.get('SSL_CERT', 'cert.pem')
-SSL_KEY = os.environ.get('SSL_KEY', 'key.pem')
+
+# Set up paths
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DATA_DIR = os.environ.get('DATA_DIR', os.path.join(BASE_DIR, 'data'))
+UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
+DB_FILE = os.path.join(DATA_DIR, 'users.db')
+LOG_FILE = os.path.join(DATA_DIR, 'access.log')
+
+# Ensure directories exist
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Force HTTPS
 app.config['SESSION_COOKIE_SECURE'] = True
@@ -60,11 +67,9 @@ CORS(app,
      })
 
 # Global variables
-UPLOAD_FOLDER = UPLOAD_PATH
 METADATA_FILE = 'metadata.json'
 AUTH_FILE = 'auth.json'
-DB_FILE = DB_PATH
-LOG_FILE = 'access.log'
+LOG_FILE = LOG_FILE
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_DURATION = 900  # 15 minutes in seconds
 RATE_LIMIT_REQUESTS = 500  # Increased from 100 to 500
