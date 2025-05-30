@@ -246,27 +246,14 @@ function setupEventListeners() {
                 <div class="space-y-4">
                     <div class="mb-4">
                         <label class="block mb-2">Folder Name:</label>
-                        <input type="text" id="newFolderName" 
-                               class="w-full px-2 py-1 border border-gray-400 bg-white focus:border-blue-500"
-                               style="height: 21px;">
+                        <input type="text" id="newFolderName" class="w-full px-2 py-1 border border-gray-400 bg-white focus:border-blue-500">
                     </div>
-                    <div class="mb-4">
-                        <label class="block mb-2">Display Name (optional):</label>
-                        <input type="text" id="newFolderDisplayName" 
-                               class="w-full px-2 py-1 border border-gray-400 bg-white focus:border-blue-500"
-                               style="height: 21px;">
-                    </div>
-                    <div class="flex justify-end space-x-2 pt-4 border-t border-gray-400">
-                        <button onclick="createFolder()" class="btn btn-primary">OK</button>
+                    <div class="flex justify-end space-x-2">
                         <button onclick="closeModal()" class="btn">Cancel</button>
+                        <button onclick="createFolder()" class="btn btn-primary">Create</button>
                     </div>
                 </div>
             `);
-            // Focus the folder name input
-            setTimeout(() => {
-                const input = document.getElementById('newFolderName');
-                if (input) input.focus();
-            }, 100);
         });
     }
 
@@ -684,16 +671,12 @@ function viewScreenshot(path, name, date) {
 // Create new folder
 async function createFolder() {
     const nameInput = /** @type {HTMLInputElement} */ (document.getElementById('newFolderName'));
-    const displayNameInput = /** @type {HTMLInputElement} */ (document.getElementById('newFolderDisplayName'));
-
-    if (!nameInput || !displayNameInput) {
-        showNotification('Form elements not found', 'error');
+    if (!nameInput) {
+        console.error('New folder name input not found');
         return;
     }
 
     const name = nameInput.value.trim();
-    const displayName = displayNameInput.value.trim();
-
     if (!name) {
         showNotification('Folder name is required', 'error');
         return;
@@ -703,32 +686,30 @@ async function createFolder() {
         const response = await fetch(API_BASE_URL + '/folder', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
-                name: name,
-                display_name: displayName 
-            }),
+            body: JSON.stringify({ name }),
             credentials: 'include'
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to create folder');
+            throw new Error('Failed to create folder');
         }
 
-        const data = await response.json();
-        if (data.success) {
-            closeModal();
-            await loadFolders(true);  // Force reload folders
+        const result = await response.json();
+        if (result.success) {
             showNotification('Folder created successfully');
+            closeModal();
+            // Refresh the folders list
+            const folders = await loadFolders(true);
+            displayFolders(folders);
+            displayFoldersGrid(folders);
         } else {
-            throw new Error(data.error || 'Failed to create folder');
+            showNotification(result.error || 'Failed to create folder', 'error');
         }
     } catch (error) {
         console.error('Error creating folder:', error);
-        showNotification(error.message || 'Failed to create folder', 'error');
+        showNotification('Failed to create folder', 'error');
     }
 }
 

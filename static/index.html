@@ -1840,75 +1840,21 @@
     <script src="/lockdown-config.js"></script>
     <script src="/app.js"></script>
     <script>
-        // Handle file upload
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fileInput = document.getElementById('fileInput');
-            const folderSelect = document.getElementById('folderSelect');
-            
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const folder = folderSelect.value;
-                await uploadToWebsite(file, folder);
-            }
-        });
-
-        // Handle drag and drop
-        const dropZone = document.getElementById('dropZone');
-        
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-        
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-        
-        dropZone.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                const file = files[0];
-                const folderSelect = document.getElementById('folderSelect');
-                await uploadToWebsite(file, folderSelect.value);
-            }
-        });
-
-        // Add this function to handle exiting multi-select mode
-        function exitMultiSelectMode() {
+        // Handle touch event handlers for screenshots
+        document.addEventListener('DOMContentLoaded', function() {
             const screenshotGrid = document.getElementById('screenshotGrid');
-            if (screenshotGrid.classList.contains('multi-select-mode')) {
-                screenshotGrid.classList.remove('multi-select-mode');
-                document.querySelectorAll('.screenshot-item').forEach(item => {
-                    item.classList.remove('screenshot-selected');
-                });
-                const bulkActionsMenu = document.getElementById('bulkActionsMenu');
-                if (bulkActionsMenu) {
-                    bulkActionsMenu.remove();
-                }
-            }
-        }
-
-        // Add this to your existing folder click handler
-        function handleFolderClick(folderId) {
-            exitMultiSelectMode(); // Exit multi-select mode when changing folders
-            // Your existing folder click handling code...
-        }
-
-        // Add this to your home button click handler
-        document.getElementById('homeBtn').addEventListener('click', () => {
-            exitMultiSelectMode(); // Exit multi-select mode when going home
-            // Your existing home button click handling code...
-        });
-
-        // Initialize the application after scripts are loaded
-        window.addEventListener('load', function() {
-            if (typeof initApp === 'function') {
-                initApp();
-            }
+            
+            screenshotGrid.addEventListener('click', function(e) {
+                const screenshotItem = e.target.closest('.screenshot-item');
+                if (!screenshotItem) return;
+                
+                // If clicked on action button, don't open screenshot
+                if (e.target.closest('.action-buttons')) return;
+                
+                // Open screenshot
+                const imgSrc = screenshotItem.querySelector('img').src;
+                openScreenshot(imgSrc);
+            });
         });
 
         function toggleSidebar() {
@@ -1934,23 +1880,6 @@
                 allFoldersBtn.click();
             }
         }
-
-        // Add touch event handlers for screenshots
-        document.addEventListener('DOMContentLoaded', function() {
-            const screenshotGrid = document.getElementById('screenshotGrid');
-            
-            screenshotGrid.addEventListener('click', function(e) {
-                const screenshotItem = e.target.closest('.screenshot-item');
-                if (!screenshotItem) return;
-                
-                // If clicked on action button, don't open screenshot
-                if (e.target.closest('.action-buttons')) return;
-                
-                // Open screenshot
-                const imgSrc = screenshotItem.querySelector('img').src;
-                openScreenshot(imgSrc);
-            });
-        });
     </script>
 </body>
 </html> 
