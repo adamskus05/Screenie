@@ -756,6 +756,7 @@ class ScreenshotApp:
         """Authenticate with the server."""
         try:
             logger.info(f"Attempting to authenticate with server: {self.config['server']['url']}")
+            logger.info(f"Using username: {username} (password length: {len(password)})")
             
             # Create a new session with proper settings
             self.session = requests.Session()
@@ -777,9 +778,16 @@ class ScreenshotApp:
             url = f"{self.config['server']['url']}/login"
             logger.info("Making login request to: %s", url)
             
+            # Ensure password is properly encoded
+            login_data = {
+                "username": username.strip(),
+                "password": password
+            }
+            logger.info("Sending login data (username only): %s", {"username": login_data["username"]})
+            
             response = self.session.post(
                 url,
-                json={"username": username, "password": password},
+                json=login_data,
                 timeout=self.config["upload"]["timeout"]
             )
             
@@ -789,7 +797,9 @@ class ScreenshotApp:
             
             try:
                 response_data = response.json()
-                logger.info(f"Response data: {response_data}")
+                # Log response data without sensitive info
+                safe_response = {k: v for k, v in response_data.items() if k != 'password'}
+                logger.info(f"Response data: {safe_response}")
             except Exception as e:
                 logger.error(f"Failed to parse response JSON: {e}")
                 logger.error(f"Raw response content: {response.text}")
